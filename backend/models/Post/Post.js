@@ -11,19 +11,22 @@ const postSchema = new Schema(
     content: {
       type: String,
       required: true,
+      trim: true
     },
     postImage: {
       type: Object,
-    },
+    }, //for now ignoring this
     categories: [
       {
         type: Schema.Types.ObjectId,
         ref: "Category",
       },
     ],
-    createdBy: {
+    author: {
       type: Schema.Types.ObjectId,
       ref: "User",
+      //required: true
+      //commenting for now
     },
     likes: [
       {
