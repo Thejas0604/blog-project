@@ -6,7 +6,7 @@ import { createPost } from "../../Services/postsAPI";
 
 const CreatePost = () => {
   const postMutation = useMutation({
-    mutationKey:["create-post"],
+    mutationKey: ["create-post"],
     mutationFn: createPost,
   });
   const formik = useFormik({
@@ -17,12 +17,17 @@ const CreatePost = () => {
     validationSchema: Yup.object({
       title: Yup.string().required("Title is required"),
       description: Yup.string().required("Description is required"),
-    }), 
+    }),
     onSubmit: (values) => {
-      console.log(values);
-      postMutation.mutate(values);
+      //console.log(values);
+      const postData = {
+        title: values.title,
+        description: values.description,
+      };
+      postMutation.mutate(postData);
     },
   });
+  console.log(postMutation);
   return (
     <div>
       <form onSubmit={formik.handleSubmit}>
