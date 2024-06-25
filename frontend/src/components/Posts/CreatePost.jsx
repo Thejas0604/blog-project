@@ -1,8 +1,14 @@
 import React from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
+import { useMutation } from "@tanstack/react-query";
+import { createPost } from "../../Services/postsAPI";
 
 const CreatePost = () => {
+  const postMutation = useMutation({
+    mutationKey:["create-post"],
+    mutationFn: createPost,
+  });
   const formik = useFormik({
     initialValues: {
       title: "",
@@ -11,9 +17,10 @@ const CreatePost = () => {
     validationSchema: Yup.object({
       title: Yup.string().required("Title is required"),
       description: Yup.string().required("Description is required"),
-    }), //cannot submit without filling these fields
+    }), 
     onSubmit: (values) => {
       console.log(values);
+      postMutation.mutate(values);
     },
   });
   return (
