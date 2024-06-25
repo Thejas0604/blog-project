@@ -4,11 +4,17 @@ const Post = require("./models/Post/Post");
 const connectDB = require("./utils/connectDB");
 connectDB();
 const app = express();
+const cors = require("cors");
 
 const port = 3000;
 
 //Middleware
 app.use(express.json());
+const corsOptions = {
+  origin: "http://localhost:5173", //In production, this will be the domain of the frontend 
+  credentials: true,
+};
+app.use(cors(corsOptions));
 
 //Create post
 app.post("/api/v1/posts/create", async (req, res) => {
