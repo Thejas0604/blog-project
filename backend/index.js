@@ -20,6 +20,7 @@ app.use(cors(corsOptions));
 app.post("/api/v1/posts/create", async (req, res) => {
   try {
     const postData = req.body;
+    //console.log(postData);
     const newPost = await Post.create(postData);
     res.status(201).json({
       status: "success",
