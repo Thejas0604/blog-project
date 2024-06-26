@@ -11,7 +11,7 @@ const port = 3000;
 //Middleware
 app.use(express.json());
 const corsOptions = {
-  origin: "http://localhost:5173", //In production, this will be the domain of the frontend 
+  origin: "http://localhost:5173", //In production, this will be the domain of the frontend
   credentials: true,
 };
 app.use(cors(corsOptions));
@@ -35,9 +35,44 @@ app.post("/api/v1/posts/create", async (req, res) => {
     });
   }
 });
+//get all posts
+app.get("/api/v1/posts", async (req, res) => {
+  try {
+    const posts = await Post.find();
+    res.status(200).json({
+      status: "success",
+      posts,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({
+      status: "fail",
+      message: "Failed to get posts",
+    });
+  }
+});
+
+//update post
+app.put("/api/v1/posts/:id", async (req, res) => {
+  try {
+    const postId = req.params.id;
+    if (!postFound) {
+      throw new Error("Post not found");
+    }
+    const postUpdated = await Post.findByIdAndUpdate(
+      postId,
+      { title: req.body.title, content: req.body.content },
+      { new: true }
+    );
+    res.status(200).json({
+      status: "success",
+      message: "Post updated successfully",
+      postUpdated,
+    });
+  } catch (error) {}
+});
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
-
-//*Todo: Check whether nodemon still needs to be installed or not
+ 
