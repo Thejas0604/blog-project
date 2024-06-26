@@ -1,5 +1,5 @@
 import React from "react";
-import { getAllPosts } from "../Services/postsAPI";
+import { getAllPosts } from "../../Services/postsAPI";
 import { useQuery } from "@tanstack/react-query";
 
 function GetAllPosts() {
@@ -10,7 +10,7 @@ function GetAllPosts() {
   console.log(data);
   return (
     <div>
-      {isLoading && <div>Loading...</div>}
+      {isLoading && <div>Posts loading</div>}
       {isError && <div>{error.message}</div>}
       {data &&
         data.posts.map((post) => (

@@ -52,27 +52,58 @@ app.get("/api/v1/posts", async (req, res) => {
   }
 });
 
-//update post
-app.put("/api/v1/posts/:id", async (req, res) => {
+//get post by id
+app.get("/api/v1/posts/:postId", async (req, res) => {
   try {
-    const postId = req.params.id;
+    const postId = req.params.postId;
+    const postFound = await Post.findById(postId);
+    res.status(200).json({
+      status: "success",
+      message: "Post found",
+      postFound,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({
+      status: "fail",
+      message: "Failed to get post",
+    });
+  }
+});
+
+//update post
+app.put("/api/v1/posts/:postId", async (req, res) => {
+  console.log(req.params);
+  try {
+    const postId = req.params.postId;
+    const postFound = await Post.findById(postId);
     if (!postFound) {
       throw new Error("Post not found");
     }
     const postUpdated = await Post.findByIdAndUpdate(
       postId,
-      { title: req.body.title, content: req.body.content },
-      { new: true }
+      {
+        title: req.body.title,
+        content: req.body.content,
+      },
+      {
+        new: true,
+      }
     );
     res.status(200).json({
       status: "success",
       message: "Post updated successfully",
       postUpdated,
     });
-  } catch (error) {}
+  } catch (error) {
+    console.log(error);
+    res.status(400).json({
+      status: "fail",
+      message: "Post update failed",
+    });
+  }
 });
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
- 
