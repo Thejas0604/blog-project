@@ -12,6 +12,7 @@ function GetAllPosts() {
     <div>
       {isLoading && <div>Posts loading</div>}
       {isError && <div>{error.message}</div>}
+      
       {data &&
         data.posts.map((post) => (
           <div key={post._id}>
