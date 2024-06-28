@@ -61,7 +61,7 @@ app.get("/api/v1/posts/:postId", async (req, res) => {
       status: "success",
       message: "Post found",
       postFound,
-    });
+    })
   } catch (err) {
     console.log(err);
     res.status(400).json({
