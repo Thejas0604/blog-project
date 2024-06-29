@@ -14,7 +14,7 @@ function PostDetails() {
   return (
     <div>
       <h1>{data?.postFound.title}</h1>
-      <h1>{data.postFound.content}</h1>
+      <h1>{data?.postFound.content}</h1>
     </div>
   );
 }
