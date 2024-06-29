@@ -10,9 +10,10 @@ function PostDetails() {
     queryFn: () => getPostById(postId),
   });
   console.log(data);
+
   return (
     <div>
-      <h1>{data.postFound.title}</h1>
+      <h1>{data?.postFound.title}</h1>
       <h1>{data.postFound.content}</h1>
     </div>
   );
