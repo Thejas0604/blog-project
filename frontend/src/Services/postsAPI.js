@@ -29,3 +29,12 @@ export const deletePost = async (postId) => {
   const response = await axios.delete(`${base_URL}/${postId}`);
   return response.data;
 }
+
+//update post
+export const updatePost = async (postData) => {
+  const response = await axios.put(`${base_URL}/${postData?.postId}`, {
+    title: postData.title,
+    content: postData.description,
+  });
+  return response.data;
+}

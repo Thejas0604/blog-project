@@ -73,7 +73,7 @@ app.get("/api/v1/posts/:postId", async (req, res) => {
 
 //update post
 app.put("/api/v1/posts/:postId", async (req, res) => {
-  console.log(req.params);
+  //console.log(req.params);
   try {
     const postId = req.params.postId;
     const postFound = await Post.findById(postId);
