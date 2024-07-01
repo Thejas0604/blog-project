@@ -23,3 +23,9 @@ export const getPostById = async (postId) => {
   const response = await axios.get(`${base_URL}/${postId}`);
   return response.data;
 }
+
+//delete post
+export const deletePost = async (postId) => {
+  const response = await axios.delete(`${base_URL}/${postId}`);
+  return response.data;
+}

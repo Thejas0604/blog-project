@@ -61,7 +61,7 @@ app.get("/api/v1/posts/:postId", async (req, res) => {
       status: "success",
       message: "Post found",
       postFound,
-    })
+    });
   } catch (err) {
     console.log(err);
     res.status(400).json({
@@ -100,6 +100,25 @@ app.put("/api/v1/posts/:postId", async (req, res) => {
     res.status(400).json({
       status: "fail",
       message: "Post update failed",
+    });
+  }
+});
+
+//delete post
+app.delete("/api/v1/posts/:postId", async (req, res) => {
+  try {
+    const postId = req.params.postId;
+    const deletedPost = await Post.findByIdAndDelete(postId);
+    res.status(200).json({
+      status: "success",
+      message: "Post deleted successfully",
+      deletedPost,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(400).json({
+      status: "fail",
+      message: "Post deletion failed",
     });
   }
 });
