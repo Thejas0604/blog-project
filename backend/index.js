@@ -5,6 +5,7 @@ const connectDB = require("./utils/connectDB");
 connectDB();
 const app = express();
 const cors = require("cors");
+const asyncHandler = require("express-async-handler");
 
 const port = 3000;
 
@@ -17,8 +18,9 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 //Create post
-app.post("/api/v1/posts/create", async (req, res, next) => {
-  try {
+app.post(
+  "/api/v1/posts/create",
+  asyncHandler(async (req, res) => {
     const postData = req.body;
     //console.log({title, content});
     const postFound = await Post.findOne({ title: postData.title });
@@ -31,30 +33,24 @@ app.post("/api/v1/posts/create", async (req, res, next) => {
       message: "Post created successfully",
       newPost,
     });
-  } catch (err) {
-    next(err);
-  }
-});
+  })
+);
 //get all posts
-app.get("/api/v1/posts", async (req, res) => {
-  try {
+app.get(
+  "/api/v1/posts",
+  asyncHandler(async (req, res) => {
     const posts = await Post.find();
     res.status(200).json({
       status: "success",
       posts,
     });
-  } catch (err) {
-    console.log(err);
-    res.status(400).json({
-      status: "fail",
-      message: "Failed to get posts",
-    });
-  }
-});
+  })
+);
 
 //get post by id
-app.get("/api/v1/posts/:postId", async (req, res) => {
-  try {
+app.get(
+  "/api/v1/posts/:postId",
+  asyncHandler(async (req, res) => {
     const postId = req.params.postId;
     const postFound = await Post.findById(postId);
     res.status(200).json({
@@ -62,19 +58,14 @@ app.get("/api/v1/posts/:postId", async (req, res) => {
       message: "Post found",
       postFound,
     });
-  } catch (err) {
-    console.log(err);
-    res.status(400).json({
-      status: "fail",
-      message: "Failed to get post",
-    });
-  }
-});
+  })
+);
 
 //update post
-app.put("/api/v1/posts/:postId", async (req, res) => {
-  //console.log(req.params);
-  try {
+app.put(
+  "/api/v1/posts/:postId",
+  asyncHandler(async (req, res) => {
+    //console.log(req.params);
     const postId = req.params.postId;
     const postFound = await Post.findById(postId);
     if (!postFound) {
@@ -95,18 +86,13 @@ app.put("/api/v1/posts/:postId", async (req, res) => {
       message: "Post updated successfully",
       postUpdated,
     });
-  } catch (error) {
-    console.log(error);
-    res.status(400).json({
-      status: "fail",
-      message: "Post update failed",
-    });
-  }
-});
+  })
+);
 
 //delete post
-app.delete("/api/v1/posts/:postId", async (req, res) => {
-  try {
+app.delete(
+  "/api/v1/posts/:postId",
+  asyncHandler(async (req, res) => {
     const postId = req.params.postId;
     const deletedPost = await Post.findByIdAndDelete(postId);
     res.status(200).json({
@@ -114,13 +100,15 @@ app.delete("/api/v1/posts/:postId", async (req, res) => {
       message: "Post deleted successfully",
       deletedPost,
     });
-  } catch (error) {
-    console.log(error);
-    res.status(400).json({
-      status: "fail",
-      message: "Post deletion failed",
-    });
-  }
+  })
+);
+
+//404 error handling middleware
+app.use((req, res, next) => {
+  res.status(404).json({
+    status: "fail",
+    message: `Cannot find route on this server`,
+  });
 });
 
 //error handling middleware
