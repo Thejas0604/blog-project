@@ -31,8 +31,8 @@ function GetAllPosts() {
       {data &&
         data.posts.map((post) => (
           <div key={post._id}>
-            <h1>{post.title}</h1>
-            <p>{post.content}</p>
+            <div
+            dangerouslySetInnerHTML={{__html:post?.content}}/>
             <Link to={`/posts/${post._id}`}>
               <button>Edit</button>
             </Link>

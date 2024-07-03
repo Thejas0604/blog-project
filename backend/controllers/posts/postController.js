@@ -6,10 +6,6 @@ postController = {
   createPost: asyncHandler(async (req, res) => {
     const postData = req.body;
     //console.log({title, content});
-    const postFound = await Post.findOne({ title: postData.title });
-    if (postFound) {
-      throw new Error("Post already exists");
-    }
     const newPost = await Post.create(postData);
     res.status(201).json({
       status: "success",
