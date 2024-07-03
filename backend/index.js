@@ -16,7 +16,8 @@ const corsOptions = {
   credentials: true,
 };
 app.use(cors(corsOptions));
-app.use("/", postRouter);
+//mounting the postRouter
+app.use("/api/v1", postRouter);
 
 //404 error handling middleware
 app.use((req, res, next) => {
