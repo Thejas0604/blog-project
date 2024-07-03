@@ -28,17 +28,28 @@ function GetAllPosts() {
     <div>
       {isLoading && <div>Posts loading</div>}
       {isError && <div>{error.message}</div>}
-      {data &&
-        data.posts.map((post) => (
-          <div key={post._id}>
+      <div className="flex flex-wrap mb-32 -mx-4">
+        {data?.posts.map((post) => (
+          <div key={post._id} className="w-full md:w-1/2 lg:w-1/3 p-4">
             <div
-            dangerouslySetInnerHTML={{__html:post?.content}}/>
-            <Link to={`/posts/${post._id}`}>
-              <button>Edit</button>
-            </Link>
-            <button onClick={() => handleDelete(post?._id)}>Delete Post</button>
+              className="bg-white border border-gray-100 hover:border-purple-500 transition duration-200 rounded-2xl h-full p-3"
+              dangerouslySetInnerHTML={{ __html: post?.content }}
+            />
+            <div className="flex ">
+              <div className="p-2 text-white bg-purple-500 hover:bg-pink-600 rounded-r-lg">
+                <Link to={`/posts/${post._id}`}>
+                  <button>Edit</button>
+                </Link>
+              </div>
+              <div className="p-2 text-white bg-purple-500 hover:bg-pink-600 rounded-r-lg">
+                <button onClick={() => handleDelete(post?._id)}>
+                  Delete Post
+                </button>
+              </div>
+            </div>
           </div>
         ))}
+      </div>
     </div>
   );
 }

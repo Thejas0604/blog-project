@@ -4,7 +4,7 @@ import * as Yup from "yup";
 import { useMutation } from "@tanstack/react-query";
 import { createPost } from "../../Services/postsAPI";
 import ReactQuill from "react-quill";
-import 'react-quill/dist/quill.snow.css';
+import "react-quill/dist/quill.snow.css";
 
 const CreatePost = () => {
   const [description, setDescription] = useState("");
@@ -34,24 +34,34 @@ const CreatePost = () => {
   const isError = postMutation.isError;
   const error = postMutation.error;
   return (
-    <div>
-      <form onSubmit={formik.handleSubmit}>
-        <ReactQuill
-          value={formik.values.description}
-          theme="snow"
-          onChange={(value) => {
-            setDescription(value);
-            formik.setFieldValue("description", value);
-          }}
-        />
-        {formik.touched.description && formik.errors.description && (
-          <span>{formik.errors.description}</span>
-        )}
-        <button type="submit">Create Post</button>
-        {isLoading && <div>Creating the post...</div>}
-        {isSuccess && <div>Post created successfully</div>}
-        {isError && <div>{error.response.data.message} </div>}
-      </form>
+    <div className="flex items-center justify-center">
+      <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8 m-4">
+        <h2 className="text-2xl font-bold text-center text-gray-800 mb-8">
+          Add New Post
+        </h2>
+        <form className="space-y-6" onSubmit={formik.handleSubmit}>
+          <ReactQuill
+            value={formik.values.description}
+            theme="snow"
+            onChange={(value) => {
+              setDescription(value);
+              formik.setFieldValue("description", value);
+            }}
+          />
+          {formik.touched.description && formik.errors.description && (
+            <span>{formik.errors.description}</span>
+          )}
+          <button
+            className="p-2 text-white bg-purple-500 hover:bg-pink-600 rounded-2xl"
+            type="submit"
+          >
+            Create Post
+          </button>
+          {isLoading && <div>Creating the post...</div>}
+          {isSuccess && <div>Post created successfully</div>}
+          {isError && <div>{error.response.data.message} </div>}
+        </form>
+      </div>
     </div>
   );
 };
