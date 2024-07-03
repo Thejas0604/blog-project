@@ -20,7 +20,11 @@ app.use(cors(corsOptions));
 app.post("/api/v1/posts/create", async (req, res, next) => {
   try {
     const postData = req.body;
-    //console.log(postData);
+    //console.log({title, content});
+    const postFound = await Post.findOne({ title: postData.title });
+    if (postFound) {
+      throw new Error("Post already exists");
+    }
     const newPost = await Post.create(postData);
     res.status(201).json({
       status: "success",
@@ -122,7 +126,7 @@ app.delete("/api/v1/posts/:postId", async (req, res) => {
 //error handling middleware
 app.use((err, req, res, next) => {
   //console.log(err);
-  const stack = err.stack;  
+  const stack = err.stack;
   const message = err.message;
   console.log(message);
   res.status(500).json({

@@ -56,6 +56,7 @@ const CreatePost = () => {
         <button type="submit">Create Post</button>
         {isLoading && <div>Creating the post...</div>}
         {isSuccess && <div>Post created successfully</div>}
+        {isError && <div>{error.response.data.message} </div>}
       </form>
     </div>
   );
