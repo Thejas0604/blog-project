@@ -17,7 +17,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 //Create post
-app.post("/api/v1/posts/create", async (req, res) => {
+app.post("/api/v1/posts/create", async (req, res, next) => {
   try {
     const postData = req.body;
     //console.log(postData);
@@ -28,11 +28,7 @@ app.post("/api/v1/posts/create", async (req, res) => {
       newPost,
     });
   } catch (err) {
-    console.log(err);
-    res.status(400).json({
-      status: "fail",
-      message: "Post creation failed",
-    });
+    next(err);
   }
 });
 //get all posts
@@ -121,6 +117,19 @@ app.delete("/api/v1/posts/:postId", async (req, res) => {
       message: "Post deletion failed",
     });
   }
+});
+
+//error handling middleware
+app.use((err, req, res, next) => {
+  //console.log(err);
+  const stack = err.stack;  
+  const message = err.message;
+  console.log(message);
+  res.status(500).json({
+    status: "fail",
+    message,
+    stack,
+  });
 });
 
 app.listen(port, () => {
