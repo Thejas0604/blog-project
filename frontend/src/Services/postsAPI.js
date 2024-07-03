@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const base_URL = "http://localhost:3000/api/v1/postsvbgftghb";
+const base_URL = "http://localhost:3000/api/v1/posts";
 
 //create post
 export const createPost = async (postData) => {
