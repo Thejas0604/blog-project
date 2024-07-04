@@ -1,22 +1,16 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import Logo from "./Logo";
+import Nav from "./Nav";
+
 
 function PublicNavbar() {
   return (
     <div>
-      <nav>
-        <ul>
-          <li>
-            <Link to="/">Home</Link>
-          </li>
-          <li>
-            <Link to="/create-post">Create Post</Link>
-          </li>
-          <li>
-            <Link to="/list">List Post</Link>
-          </li>
-        </ul>
-      </nav>
+      <header className="sticky top-0 z-[1] mx-auto  flex w-full max-w-7xl flex-wrap items-center justify-between border-b border-gray-100 bg-background p-[2em] font-sans font-bold uppercase text-text-primary backdrop-blur-[100px] dark:border-gray-800 dark:bg-d-background dark:text-d-text-primary">
+      <Logo/>
+      <Nav/>
+      </header>
     </div>
   );
 }

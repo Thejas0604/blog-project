@@ -11,10 +11,10 @@ function App() {
       <BrowserRouter>
         <PublicNavbar />
         <Routes>
-          <Route path="/" element={<Home/>} />
+          <Route path="/" element={<Home />} />
           <Route path="/create-post" element={<CreatePost />} />
           <Route path="/list" element={<GetAllPosts />} />
-          <Route path="/posts/:postId" element={<UpdatePost/>} />
+          <Route path="/posts/:postId" element={<UpdatePost />} />
         </Routes>
       </BrowserRouter>
     </div>
