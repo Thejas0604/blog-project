@@ -3,6 +3,7 @@ import { deletePost, getAllPosts } from "../../Services/postsAPI";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
+import "./styles.css";
 
 function GetAllPosts() {
   const { isError, isLoading, data, error, refetch } = useQuery({
@@ -28,10 +29,10 @@ function GetAllPosts() {
     <div>
       {isLoading && <div>Posts loading</div>}
       {isError && <div>{error.message}</div>}
-      <div className="flex flex-wrap mb-32 -mx-4">
+      <div className="flex flex-wrap mb-32 -mx-4 p-20">
         {data?.posts?.map((post) => (
           <div key={post._id} className="w-full md:w-1/2 lg:w-1/3 p-4">
-            {/* <Link to={`/posts/${post._id}`}> */}
+            <Link to={`/posts/${post._id}`}>
               <div className="bg-white border border-gray-100 hover:border-orange-500 transition duration-200 rounded-2xl h-full p-3">
                 <div className="relative" style={{ height: 240 }}>
                   <div className="absolute top-0 left-0 z-10"></div>
@@ -62,7 +63,7 @@ function GetAllPosts() {
                 </div>
                 <div className="flex ">
               <div className="p-2 text-white bg-purple-500 hover:bg-pink-600 rounded-r-lg">
-                <Link to={`/posts/${post._id}`}>
+                <Link to={`/posts/update-post/${post._id}`}>
                   <button>Edit</button>
                 </Link>
               </div>
@@ -73,7 +74,7 @@ function GetAllPosts() {
               </div>
             </div>
               </div>
-            {/* </Link> */}
+            </Link>
           </div>
         ))}
       </div>
