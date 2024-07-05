@@ -3,11 +3,9 @@ import axios from "axios";
 const base_URL = "http://localhost:3000/api/v1/posts";
 
 //create post
-export const createPost = async (postData) => {
-  //console.log(postData);
-  const response = await axios.post(`${base_URL}/create`, {
-    content: postData.description,
-  });
+export const createPost = async (formData) => {
+  //console.log(formData);
+  const response = await axios.post(`${base_URL}/create`, formData);
   return response.data;
 };
 

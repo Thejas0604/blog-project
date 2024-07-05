@@ -1,14 +1,20 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { useMutation } from "@tanstack/react-query";
 import { createPost } from "../../Services/postsAPI";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
+import { FaTimesCircle } from "react-icons/fa";
 
 const CreatePost = () => {
+  const fileInputRef = useRef(null);
   //state for wysiwyg editor
-  const [description, setDescription] = useState("");
+  const [content, setContent] = useState("");
+
+  //file upload state
+  const [imageError, setImageError] = useState("");
+  const [imagePreview, setImagePreview] = useState("");
 
   //post mutation
   const postMutation = useMutation({
@@ -17,19 +23,48 @@ const CreatePost = () => {
   });
   const formik = useFormik({
     initialValues: {
-      description: "",
+      content: "",
+      image: "",
     },
     validationSchema: Yup.object({
-      description: Yup.string().required("Description is required"),
+      content: Yup.string().required("Content is required"),
+      image: Yup.string().required("Image is required"),
     }),
     onSubmit: (values) => {
       //console.log(values);
-      const postData = {
-        description: values.description,
-      };
-      postMutation.mutate(postData);
+      const formData = new FormData();
+      formData.append("content", values.content);
+      formData.append("image", values.image);
+      postMutation.mutate(formData);
     },
   });
+
+  //!file upload logic
+  //handle file change
+  const handleFileChange = (event) => {
+    //console.log(event);
+    const file = event.currentTarget.files[0];
+    //console.log(file);
+    if (file.size > 1048576) {
+      setImageError("Image size should be less than 1mb");
+      return;
+    }
+    if (!["image/jpeg", "image/png", "image/jpg"].includes(file.type)) {
+      setImageError("Invalid file type");
+      return;
+    }
+    formik.setFieldValue("image", file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  //remove image
+  const removeImage = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    setImagePreview(null);
+    formik.setFieldValue("image", null);
+  };
   //console.log(postMutation);
   const isLoading = postMutation.isPending;
   const isSuccess = postMutation.isSuccess;
@@ -43,25 +78,63 @@ const CreatePost = () => {
         </h2>
         <form className="space-y-6" onSubmit={formik.handleSubmit}>
           <ReactQuill
-            value={formik.values.description}
+            value={formik.values.content}
             theme="snow"
             onChange={(value) => {
-              setDescription(value);
-              formik.setFieldValue("description", value);
+              setContent(value);
+              formik.setFieldValue("content", value);
             }}
           />
-          {formik.touched.description && formik.errors.description && (
-            <span>{formik.errors.description}</span>
+          {formik.touched.content && formik.errors.content && (
+            <span>{formik.errors.content}</span>
           )}
           <div>Category</div>
-          <div className="bg-gray-100 p-4 ">
-            <div className="text-center">Upload Image</div>
-            <div className="flex justify-center mt-2">
-              <button className="p-2 text-white bg-blue-500 rounded-2xl">
+          <div className="flex flex-col items-center justify-center bg-gray-50 p-4 shadow rounded-lg">
+            <label
+              htmlFor="images"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Upload Image
+            </label>
+            <div className="flex justify-center items-center w-full">
+              <input
+                id="images"
+                type="file"
+                name="image"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+                ref={fileInputRef}
+              />
+              <label
+                htmlFor="images"
+                className="cursor-pointer bg-blue-500 text-white px-4 py-2 rounded shadow hover:bg-blue-600"
+              >
                 Choose a file
-              </button>
+              </label>
             </div>
           </div>
+          {formik.touched.image && formik.errors.image && (
+            <p className="text-sm text-red-600">{formik.errors.image}</p>
+          )}
+          {imageError && <p className="text-sm text-red-600">{imageError}</p>}
+
+          {imagePreview && (
+            <div className="mt-2 relative">
+              <img
+                src={imagePreview}
+                alt="Preview"
+                className="p-4 mt-2 h-48 w-full object-cover"
+              />
+              <button
+                onClick={removeImage}
+                className="absolute right-0 top-0 transform translate-x-1/2 -translate-y-1/2 bg-white rounded-full p-1"
+              >
+                <FaTimesCircle className="text-red-500" />
+              </button>
+            </div>
+          )}
+
           <div className="flex justify-center mt-2">
             <button
               className="p-2 text-white bg-purple-500 hover:bg-pink-600 rounded-2xl"
