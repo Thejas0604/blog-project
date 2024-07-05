@@ -7,8 +7,10 @@ import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 
 const CreatePost = () => {
+  //state for wysiwyg editor
   const [description, setDescription] = useState("");
 
+  //post mutation
   const postMutation = useMutation({
     mutationKey: ["create-post"],
     mutationFn: createPost,

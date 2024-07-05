@@ -4,9 +4,9 @@ const Post = require("../../models/Post/Post");
 postController = {
   //create post
   createPost: asyncHandler(async (req, res) => {
-    const postData = req.body;
-    //console.log({title, content});
-    const newPost = await Post.create(postData);
+    const { content } = req.body;
+    //console.log(req.file);
+    const newPost = await Post.create({ content, postImage: req.file });
     res.status(201).json({
       status: "success",
       message: "Post created successfully",
@@ -70,7 +70,7 @@ postController = {
       message: "Post deleted successfully",
       deletedPost,
     });
-  })
+  }),
 };
 
 module.exports = postController;

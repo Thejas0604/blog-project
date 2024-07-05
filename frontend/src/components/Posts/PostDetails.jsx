@@ -20,15 +20,15 @@ const PostDetails = () => {
     queryKey: ["post-details"],
     queryFn: () => getPostById(postId),
   });
-  //console.log(data?.postFound?.content);
+  //console.log(data?.postFound?.postImage?.path);
 
   return (
     <div className="container mx-auto p-4">
       <div className="bg-white rounded-lg shadow-lg p-5">
         <div className="flex justify-center">
           <img
-            // src={postData?.image?.path}
-            src="https://cdn.pixabay.com/photo/2017/08/01/02/10/dark-2562840_1280.jpg"
+            src={data?.postFound?.postImage?.path}
+            // src="https://cdn.pixabay.com/photo/2017/08/01/02/10/dark-2562840_1280.jpg"
             // alt={postData?._id}
             className="w-auto h-96 object-cover rounded-lg mb-4 "
           />

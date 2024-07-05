@@ -39,8 +39,8 @@ function GetAllPosts() {
                   <div className="absolute bottom-0 right-0 z-10"></div>
                   <img
                     className="absolute inset-0 w-full h-full object-cover rounded-2xl"
-                    // src={post?.image?.path}
-                    src="https://cdn.pixabay.com/photo/2017/08/01/02/10/dark-2562840_1280.jpg"
+                    src={post?.postImage?.path}
+                    // src="https://cdn.pixabay.com/photo/2017/08/01/02/10/dark-2562840_1280.jpg"
                     alt={post?.content}
                   />
                 </div>
