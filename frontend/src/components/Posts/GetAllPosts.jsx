@@ -61,7 +61,9 @@ function GetAllPosts() {
                     </div>
                   </div>
                 </div>
-                <div className="flex ">
+              </div>
+            </Link>
+            <div className="flex ">
               <div className="p-2 text-white bg-purple-500 hover:bg-pink-600 rounded-r-lg">
                 <Link to={`/posts/update-post/${post._id}`}>
                   <button>Edit</button>
@@ -73,8 +75,6 @@ function GetAllPosts() {
                 </button>
               </div>
             </div>
-              </div>
-            </Link>
           </div>
         ))}
       </div>
