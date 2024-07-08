@@ -5,10 +5,10 @@ const bcryptjs = require("bcryptjs");
 
 passport.use(
   new LocalStrategy(
-    { usernameField: "userName" },
-    async (email, password, done) => {
+    { usernameField: "username" },
+    async (username, password, done) => {
       try {
-        const user = await User.findOne({ userName });
+        const user = await User.findOne({ username });
         if (!user) {
           return done(null, false, { message: "User not found" });
         }
