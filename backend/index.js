@@ -7,6 +7,7 @@ const app = express();
 const cors = require("cors");
 const postRouter = require("./routers/post/postRouter");
 const userRouter = require("./routers/user/userRouter");
+const passport = require("./utils/passport-config");
 
 const port = 3000;
 
@@ -17,6 +18,7 @@ const corsOptions = {
   credentials: true,
 };
 app.use(cors(corsOptions));
+app.use(passport.initialize());
 //mounting the postRouter
 app.use("/api/v1/posts", postRouter);
 //mounting the userRouter
