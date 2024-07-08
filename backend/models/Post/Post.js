@@ -10,7 +10,7 @@ const postSchema = new Schema(
     },
     postImage: {
       type: Object,
-    }, //for now ignoring this
+    }, 
     categories: [
       {
         type: Schema.Types.ObjectId,

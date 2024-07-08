@@ -6,6 +6,7 @@ connectDB();
 const app = express();
 const cors = require("cors");
 const postRouter = require("./routers/post/postRouter");
+const userRouter = require("./routers/user/userRouter");
 
 const port = 3000;
 
@@ -17,7 +18,9 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 //mounting the postRouter
-app.use("/api/v1", postRouter);
+app.use("/api/v1/posts", postRouter);
+//mounting the userRouter
+app.use("/api/v1/user", userRouter);
 
 //404 error handling middleware
 app.use((req, res, next) => {

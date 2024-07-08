@@ -1,6 +1,8 @@
 const mongoose = require("mongoose");
+const { Schema } = mongoose;
 
-const postSchema = new mongoose.Schema(
+
+const userSchema = new mongoose.Schema(
   {
     userName: {
       type: String,
@@ -8,24 +10,24 @@ const postSchema = new mongoose.Schema(
       trim: true,
     },
     profileImage: {
-        type: Object,
-        default: null,
+      type: Object,
+      default: null,
     },
     email: {
       type: String,
-      required: false, //!check
+      required: true,
     },
     password: {
       type: String,
-      required: false, //!check
+      required: true,
     },
     googleId: {
       type: String,
-      required: false, 
+      required: false,
     },
     authMethod: {
       type: String,
-      enum: ["local", "google", "facebook"],
+      enum: ["local", "google"],
       required: true,
       default: "local",
     },
@@ -45,7 +47,7 @@ const postSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-    posts : [
+    posts: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Post",
@@ -95,5 +97,5 @@ const postSchema = new mongoose.Schema(
   }
 );
 
-const Post = mongoose.model("Post", postSchema);
-module.exports = Post;
+const User = mongoose.model("User", userSchema);
+module.exports = User;
