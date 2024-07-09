@@ -4,9 +4,9 @@ import * as Yup from "yup";
 import { Link, useNavigate } from "react-router-dom";
 import { registerAPI } from "../../Services/usersAPI";
 import { useMutation } from "@tanstack/react-query";
-//import AlertMessage from "../Alert/AlertMessage";
 
 const Register = () => {
+  const navigate = useNavigate();
   const userMutation = useMutation({
     mutationKey: ["register-user"],
     mutationFn: registerAPI,
@@ -23,8 +23,15 @@ const Register = () => {
       password: Yup.string().required("Password is required"),
     }),
     onSubmit: (values) => {
-      console.log(values);
-      userMutation.mutate(values);
+      //console.log(values);
+      //userMutation.mutate(values);
+      userMutation
+        .mutateAsync(values)
+        .then(() => {
+          // redirect
+          navigate("/login");
+        })
+        .catch((err) => console.log(err));
     },
   });
   console.log(userMutation);
@@ -45,18 +52,6 @@ const Register = () => {
               <span />
               <span className="font-bold font-heading">Login</span>
             </Link>
-            {/* {userMutation.isPending && (
-              <AlertMessage type="loading" message="Loading please wait..." />
-            )}
-            {userMutation.isSuccess && (
-              <AlertMessage type="success" message="Login success" />
-            )}
-            {userMutation.isError && (
-              <AlertMessage
-                type="error"
-                message={userMutation.error.response.data.message}
-              />
-            )} */}
 
             <label
               className="block text-sm font-medium mb-2"

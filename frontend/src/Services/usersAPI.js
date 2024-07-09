@@ -13,3 +13,15 @@ export const registerAPI = async (userData) => {
   );
   return response.data;
 };
+
+export const loginAPI = async (userData) => {
+  const response = await axios.post(
+    `${base_URL}/login`,
+    {
+      username: userData?.username,
+      password: userData?.password,
+    },
+    { withCredentials: true }
+  );
+  return response.data;
+};

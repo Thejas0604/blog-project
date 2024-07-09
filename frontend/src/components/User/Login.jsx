@@ -3,21 +3,22 @@ import { useFormik } from "formik";
 import * as Yup from "yup";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
+import { loginAPI } from "../../Services/usersAPI";
 
 const Login = () => {
   //navigate
   const navigate = useNavigate();
   // user mutation
-//   const userMutation = useMutation({
-//     mutationKey: ["user-registration"],
-//     mutationFn: loginAPI,
-//   });
+  const userMutation = useMutation({
+    mutationKey: ["user-login"],
+    mutationFn: loginAPI,
+  });
   // formik config
   const formik = useFormik({
     // initial data
     initialValues: {
-      username: "masynctech",
-      password: "12345",
+      username: "",
+      password: "",
     },
     // validation
     validationSchema: Yup.object({
@@ -31,16 +32,16 @@ const Login = () => {
         .mutateAsync(values)
         .then(() => {
           // redirect
-          navigate("/dashboard");
+          navigate("/");
         })
         .catch((err) => console.log(err));
     },
   });
   console.log(userMutation);
-  const isLoading = postMutation.isPending;
-  const isSuccess = postMutation.isSuccess;
-  const isError = postMutation.isError;
-  const error = postMutation.error;
+  const isLoading = userMutation.isPending;
+  const isSuccess = userMutation.isSuccess;
+  const isError = userMutation.isError;
+  const error = userMutation.error;
   return (
     <div className="flex flex-wrap pb-24">
       <div className="w-full  p-4">
@@ -54,8 +55,6 @@ const Login = () => {
               <span />
               <span className="font-bold font-heading">Register</span>
             </Link>
-            {/* show message */}
-            {/* show alert */}
 
             <label
               className="block text-sm font-medium mb-2"
@@ -105,8 +104,8 @@ const Login = () => {
             <Link className="mt-10 text-indigo-500" to="/forgot-password">
               Forgot Password?
             </Link>
-            {isLoading && <div>Creating the post...</div>}
-            {isSuccess && <div>Post created successfully</div>}
+            {isLoading && <div>Loading..</div>}
+            {isSuccess && <div>Logged in</div>}
             {isError && <div>{error.response.data.message} </div>}
           </form>
         </div>
