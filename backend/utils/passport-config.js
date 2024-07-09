@@ -38,13 +38,13 @@ passport.use(
     },
     async (accessToken, refreshtoken, profile, done) => {
       try {
-        let user = await User.findOne({ googleId: profile.id });
+        let user = await User.findOne({ googleId: profile?.id });
         //destructure the profile
         const {
           id,
           displayName,
           name,
-          _jason: { picture },
+          _json: { picture },
         } = profile;
         //check email
         let email = "";
@@ -57,6 +57,7 @@ passport.use(
             username: displayName,
             email: email,
             profileImage: picture,
+            authMethod: "google",
           });
         }
         done(null, user);
