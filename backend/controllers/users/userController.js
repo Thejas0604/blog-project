@@ -40,7 +40,7 @@ const userController = {
         });
       }
       //generate token
-      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+      const token = jwt.sign({ id: user?._id }, process.env.JWT_SECRET);
       //console.log(token);
       //set the token in the cookie
       res.cookie("token", token, {
