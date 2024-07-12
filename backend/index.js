@@ -8,6 +8,7 @@ const cors = require("cors");
 const postRouter = require("./routers/post/postRouter");
 const userRouter = require("./routers/user/userRouter");
 const passport = require("./utils/passport-config");
+const cookieParser = require("cookie-parser");
 
 const port = 3000;
 
@@ -19,6 +20,8 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 app.use(passport.initialize());
+//pass cookie header to the request object
+app.use(cookieParser());
 //mounting the postRouter
 app.use("/api/v1/posts", postRouter);
 //mounting the userRouter

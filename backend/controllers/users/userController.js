@@ -75,7 +75,7 @@ const userController = {
         }
         //generate token
         const token = jwt.sign({ id: user?._id }, process.env.JWT_SECRET, {
-          expiresIn: "1d",    
+          expiresIn: "1d",
         });
         //set the token in the cookie
         res.cookie("token", token, {
@@ -87,6 +87,46 @@ const userController = {
         res.redirect("http://localhost:5173/");
       }
     )(req, res, next);
+  }),
+  //chech isAuthenticted
+  checkAuthenticated: asyncHandler(async (req, res, next) => {
+    const token = req.cookies["token"];
+    if (!token) {
+      return res.status(401).json({
+        status: "fail",
+        message: "User not authenticated",
+        isAuthenticated: false,
+      });
+    }
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const user = await User.findById(decoded?.id);
+      //console.log(user);
+      if (!user) {
+        return res.status(401).json({
+          status: "fail",
+          message: "User not authenticated",
+          isAuthenticated: false,
+        });
+      } else {
+        return res.status(200).json({
+          status: "success",
+          message: "User authenticated",
+          isAuthenticated: true,
+          username: user.username,
+          email: user.email,
+          _id: user._id,
+          profilImage: user.profileImage,
+        });
+      }
+    } catch (error) {
+      return res.status(401).json({
+        status: "fail",
+        message: "User not authenticated",
+        isAuthenticated: false,
+        error,
+      });
+    }
   }),
 };
 
