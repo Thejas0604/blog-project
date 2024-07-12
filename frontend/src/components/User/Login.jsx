@@ -99,6 +99,15 @@ const Login = () => {
             >
               Login
             </button>
+            {/* Google Login */}
+            <button
+              className="h-14 inline-flex items-center justify-center py-4 px-6 text-white font-bold font-heading rounded-full bg-orange-500 w-full text-center border border-orange-600 shadow hover:bg-orange-600 focus:ring focus:ring-orange-200 transition duration-200 mb-8"
+              type="submit"
+            >
+              <a href="http://localhost:3000/api/v1/user/auth/google">
+                Login With Google
+              </a>
+            </button>
 
             {/* forgot password link */}
             <Link className="mt-10 text-indigo-500" to="/forgot-password">
