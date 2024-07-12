@@ -9,7 +9,7 @@ function Profile() {
     queryKey: ["user-auth"],
     queryFn: checkAuthStatus,
   });
-  console.log(data);
+  //console.log(data);
   //dispatch
   const dispatch = useDispatch();
   useEffect(() => {
