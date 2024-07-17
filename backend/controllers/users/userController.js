@@ -89,8 +89,9 @@ const userController = {
     )(req, res, next);
   }),
   //chech isAuthenticted
-  checkAuthenticated: asyncHandler(async (req, res, next) => {
+  checkAuthenticated: asyncHandler(async (req, res) => {
     const token = req.cookies["token"];
+    //console.log(token);
     if (!token) {
       return res.status(401).json({
         status: "fail",
@@ -128,6 +129,16 @@ const userController = {
       });
     }
   }),
+  //logout
+  logout: async (req, res) => {
+    res.cookie("token", "", {
+      maxAge: 1,
+    });
+    res.status(200).json({
+      status: "success",
+      message: "Successfully logout",
+    });
+  },
 };
 
 module.exports = userController;

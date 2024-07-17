@@ -27,7 +27,7 @@ const Login = () => {
     }),
     // submit
     onSubmit: (values) => {
-      console.log(values);
+      //console.log(values);
       userMutation
         .mutateAsync(values)
         .then(() => {
@@ -37,7 +37,7 @@ const Login = () => {
         .catch((err) => console.log(err));
     },
   });
-  console.log(userMutation);
+  //console.log(userMutation);
   const isLoading = userMutation.isPending;
   const isSuccess = userMutation.isSuccess;
   const isError = userMutation.isError;

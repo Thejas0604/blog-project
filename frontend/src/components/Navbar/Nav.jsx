@@ -8,6 +8,7 @@ const Nav = () => {
       <NavLink to="/create-post">Create Post</NavLink>
 
       <NavLink to="/list">List Post</NavLink>
+      <NavLink to="/login">Login</NavLink>
     </>
   );
 };

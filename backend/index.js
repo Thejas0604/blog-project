@@ -40,7 +40,7 @@ app.use((err, req, res, next) => {
   //console.log(err);
   const stack = err.stack;
   const message = err.message;
-  console.log(message);
+  //console.log(message);
   res.status(500).json({
     status: "fail",
     message,
