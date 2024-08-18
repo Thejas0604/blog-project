@@ -15,6 +15,7 @@ import { useDispatch } from "react-redux";
 import React, { useEffect } from "react";
 import { isAuthenticated } from "../redux/slices/authSlices";
 import { checkAuthStatus } from "./Services/usersAPI";
+import AuthRoute from "./components/AuthRoute/AuthRoute";
 
 function App() {
   //check authenticated status
@@ -30,19 +31,32 @@ function App() {
   }, [data]);
   //get the loggedin user
   const { userAuth } = useSelector((state) => state.auth);
-  //console.log(userAuth);
   return (
     <div>
       <BrowserRouter>
         {userAuth ? <PrivateNavbar /> : <PublicNavbar />}
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/create-post" element={<CreatePost />} />
           <Route path="/list" element={<GetAllPosts />} />
           <Route path="/posts/:postId" element={<PostDetails />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/profile" element={<Profile />} />
+          <Route
+            path="/profile"
+            element={
+              <AuthRoute>
+                <Profile />
+              </AuthRoute>
+            }
+          />
+          <Route
+            path="/create-post"
+            element={
+              <AuthRoute>
+                <CreatePost />
+              </AuthRoute>
+            }
+          />
           {/* <Route path="/posts/update-post/:postId" element={<UpdatePost />} /> */}
         </Routes>
       </BrowserRouter>
