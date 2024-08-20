@@ -21,9 +21,14 @@ postRouter.get("/", postController.getAllPosts);
 postRouter.get("/:postId", postController.getPostById);
 
 //update post
-postRouter.put("/:postId", upload.single("image"), postController.updatePost);
+postRouter.put(
+  "/:postId",
+  isAuthenticated,
+  upload.single("image"),
+  postController.updatePost
+);
 
 //delete post
-postRouter.delete("/:postId", postController.deletePost);
+postRouter.delete("/:postId", isAuthenticated, postController.deletePost);
 
 module.exports = postRouter;

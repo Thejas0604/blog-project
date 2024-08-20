@@ -5,8 +5,12 @@ postController = {
   //create post
   createPost: asyncHandler(async (req, res) => {
     const { content } = req.body;
-    //console.log(req.file);
-    const newPost = await Post.create({ content, postImage: req.file });
+    //console.log(req.user);
+    const newPost = await Post.create({
+      content,
+      postImage: req.file,
+      author: req.user,
+    });
     res.status(201).json({
       status: "success",
       message: "Post created successfully",

@@ -10,7 +10,7 @@ const postSchema = new Schema(
     },
     postImage: {
       type: Object,
-    }, 
+    },
     categories: [
       {
         type: Schema.Types.ObjectId,
@@ -20,8 +20,7 @@ const postSchema = new Schema(
     author: {
       type: Schema.Types.ObjectId,
       ref: "User",
-      //required: true
-      //commenting for now
+      required: true,
     },
     likes: [
       {
