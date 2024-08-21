@@ -1,6 +1,5 @@
 require("dotenv").config();
 const express = require("express");
-const Post = require("./models/Post/Post");
 const connectDB = require("./utils/connectDB");
 connectDB();
 const app = express();
@@ -9,6 +8,7 @@ const postRouter = require("./routers/post/postRouter");
 const userRouter = require("./routers/user/userRouter");
 const passport = require("./utils/passport-config");
 const cookieParser = require("cookie-parser");
+const categoryRouter = require("./routers/category/categoryRouter");
 
 const port = 3000;
 
@@ -26,6 +26,8 @@ app.use(cookieParser());
 app.use("/api/v1/posts", postRouter);
 //mounting the userRouter
 app.use("/api/v1/user", userRouter);
+//mounting the categoryRouter
+app.use("/api/v1/categories", categoryRouter);
 
 //404 error handling middleware
 app.use((req, res, next) => {
