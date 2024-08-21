@@ -18,6 +18,7 @@ import { checkAuthStatus } from "./Services/usersAPI";
 import AuthRoute from "./components/AuthRoute/AuthRoute";
 import UserDashbaord from "./components/User/UserDashboard";
 import AccountSummaryDashboard from "./components/User/AccountSummaryDashboard";
+import AddCategory from "./components/Category/AddCategory";
 
 function App() {
   //check authenticated status
@@ -64,6 +65,14 @@ function App() {
               element={
                 <AuthRoute>
                   <AccountSummaryDashboard />
+                </AuthRoute>
+              }
+            />
+            <Route
+              path="add-category"
+              element={
+                <AuthRoute>
+                  <AddCategory />
                 </AuthRoute>
               }
             />
