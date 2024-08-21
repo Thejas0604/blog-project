@@ -17,6 +17,7 @@ import { isAuthenticated } from "../redux/slices/authSlices";
 import { checkAuthStatus } from "./Services/usersAPI";
 import AuthRoute from "./components/AuthRoute/AuthRoute";
 import UserDashbaord from "./components/User/UserDashboard";
+import AccountSummaryDashboard from "./components/User/AccountSummaryDashboard";
 
 function App() {
   //check authenticated status
@@ -55,6 +56,14 @@ function App() {
               element={
                 <AuthRoute>
                   <CreatePost />
+                </AuthRoute>
+              }
+            />
+            <Route
+              path=""
+              element={
+                <AuthRoute>
+                  <AccountSummaryDashboard />
                 </AuthRoute>
               }
             />
