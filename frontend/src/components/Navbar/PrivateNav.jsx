@@ -24,12 +24,11 @@ const PrivateNav = () => {
     <>
       <NavLink to="/">Home</NavLink>
 
-      <NavLink to="/create-post">Create Post</NavLink>
-
       <NavLink to="/list">List Post</NavLink>
       <NavLink>
         <button onClick={logoutHandler}>Logout</button>
       </NavLink>
+      <NavLink to="/dashboard">Dashboard</NavLink>
       <div>PrivateNavbar</div>
     </>
   );

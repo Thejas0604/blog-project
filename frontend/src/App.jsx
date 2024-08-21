@@ -16,6 +16,7 @@ import React, { useEffect } from "react";
 import { isAuthenticated } from "../redux/slices/authSlices";
 import { checkAuthStatus } from "./Services/usersAPI";
 import AuthRoute from "./components/AuthRoute/AuthRoute";
+import UserDashbaord from "./components/User/UserDashboard";
 
 function App() {
   //check authenticated status
@@ -42,6 +43,23 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route
+            path="/dashboard"
+            element={
+              <AuthRoute>
+                <UserDashbaord />
+              </AuthRoute>
+            }
+          >
+            <Route
+              path="create-post"
+              element={
+                <AuthRoute>
+                  <CreatePost />
+                </AuthRoute>
+              }
+            />
+          </Route>
+          <Route
             path="/profile"
             element={
               <AuthRoute>
@@ -49,14 +67,7 @@ function App() {
               </AuthRoute>
             }
           />
-          <Route
-            path="/create-post"
-            element={
-              <AuthRoute>
-                <CreatePost />
-              </AuthRoute>
-            }
-          />
+
           {/* <Route path="/posts/update-post/:postId" element={<UpdatePost />} /> */}
         </Routes>
       </BrowserRouter>
