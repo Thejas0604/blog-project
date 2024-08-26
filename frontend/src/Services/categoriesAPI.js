@@ -11,11 +11,11 @@ export const createCategoryAPI = async (values) => {
   return response.data;
 };
 
-// //get all posts
-// export const getAllPosts = async () => {
-//   const response = await axios.get(base_URL);
-//   return response.data;
-// };
+//get all posts
+export const getAllCategoriesAPI = async () => {
+  const response = await axios.get(base_URL);
+  return response.data;
+};
 
 // //get post by id
 // export const getPostById = async (postId) => {

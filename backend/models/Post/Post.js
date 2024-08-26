@@ -11,10 +11,11 @@ const postSchema = new Schema(
     postImage: {
       type: Object,
     },
-    categories: [
+    category: [
       {
         type: Schema.Types.ObjectId,
         ref: "Category",
+        required: true,
       },
     ],
     author: {

@@ -1,13 +1,16 @@
 const asyncHandler = require("express-async-handler");
 const Post = require("../../models/Post/Post");
+const Category = require("../../models/Category/Category");
 
 postController = {
   //create post
   createPost: asyncHandler(async (req, res) => {
-    const { content } = req.body;
+    const { content, category } = req.body;
     //console.log(req.user);
+    const categoryNew = Category.findOne({category});
     const newPost = await Post.create({
       content,
+      categoryNew,
       postImage: req.file,
       author: req.user,
     });

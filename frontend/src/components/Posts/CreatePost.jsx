@@ -6,6 +6,9 @@ import { createPost } from "../../Services/postsAPI";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import { FaTimesCircle } from "react-icons/fa";
+import Select from "react-select";
+import { useQuery } from "@tanstack/react-query";
+import { getAllCategoriesAPI } from "../../Services/categoriesAPI";
 
 const CreatePost = () => {
   const fileInputRef = useRef(null);
@@ -25,19 +28,44 @@ const CreatePost = () => {
     initialValues: {
       content: "",
       image: "",
+      category: "",
     },
     validationSchema: Yup.object({
       content: Yup.string().required("Content is required"),
       image: Yup.string().required("Image is required"),
+      category: Yup.string().required("Category is required"),
     }),
     onSubmit: (values) => {
-      //console.log(values);
+      console.log(values);
       const formData = new FormData();
       formData.append("content", values.content);
       formData.append("image", values.image);
+      formData.append("category", values.category);
       postMutation.mutate(formData);
     },
   });
+
+  //!Category logic
+  //getting categories
+  const {
+    data: categoriesData,
+    err,
+    refetch,
+  } = useQuery({
+    queryKey: ["fetch-categories"],
+    queryFn: getAllCategoriesAPI,
+  });
+  //console.log(categoriesData.categories);
+
+  const options = [];
+  categoriesData?.categories?.map((category) => {
+    options.push({
+      value: category.categoryName,
+      label: category.categoryName,
+    });
+  });
+
+  //const MyComponent = () => <Select options={options} />;
 
   //!file upload logic
   //handle file change
@@ -45,7 +73,7 @@ const CreatePost = () => {
     //console.log(event);
     const file = event.currentTarget.files[0];
     //console.log(file);
-    if (file.size > 1048576) {
+    if (file?.size > 1048576) {
       setImageError("Image size should be less than 1mb");
       return;
     }
@@ -70,6 +98,7 @@ const CreatePost = () => {
   const isSuccess = postMutation.isSuccess;
   const isError = postMutation.isError;
   const error = postMutation.error;
+
   return (
     <div className="flex items-center justify-center bg-gray-200">
       <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8 m-4">
@@ -88,7 +117,24 @@ const CreatePost = () => {
           {formik.touched.content && formik.errors.content && (
             <span>{formik.errors.content}</span>
           )}
-          <div>Category</div>
+          <div>
+            <label
+              htmlFor="category"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Category
+            </label>
+            <Select
+              options={options}
+              value={options.find(
+                (option) => option.value === formik.values.category
+              )}
+              onChange={(selectedOption) =>
+                formik.setFieldValue("category", selectedOption.value)
+              }
+            />
+          </div>
+
           <div className="flex flex-col items-center justify-center bg-gray-50 p-4 shadow rounded-lg">
             <label
               htmlFor="images"
