@@ -1,32 +1,9 @@
-import React from "react";
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuIndicator,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-  NavigationMenuViewport,
-  navigationMenuTriggerStyle 
-} from "@/components/ui/navigation-menu";
+import React from 'react'
 
 function Home() {
   return (
-    <div>
-      <NavigationMenu>
-        <NavigationMenuList>
-          <NavigationMenuItem>
-            <NavigationMenuTrigger>Home</NavigationMenuTrigger>
-            <NavigationMenuContent>
-              <NavigationMenuLink>Link</NavigationMenuLink>
-            </NavigationMenuContent>
-            <NavigationMenuTrigger>Home</NavigationMenuTrigger>
-          </NavigationMenuItem>
-        </NavigationMenuList>
-      </NavigationMenu>
-    </div>
-  );
+    <div>Home</div>
+  )
 }
 
-export default Home;
+export default Home
