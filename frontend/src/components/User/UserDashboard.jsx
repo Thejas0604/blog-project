@@ -31,36 +31,36 @@ const navigation = [
     icon: FaFileAlt,
     current: false,
   },
-  {
-    name: "My Followers",
-    href: "/dashboard/my-followers",
-    icon: FaUsers,
-    current: false,
-  },
-  {
-    name: "My Followings",
-    href: "/dashboard/my-followings",
-    icon: FaUsers,
-    current: false,
-  },
-  {
-    name: "Create Plan",
-    href: "/dashboard/add-plan",
-    icon: FaCalendarPlus,
-    current: false,
-  },
+  // {
+  //   name: "My Followers",
+  //   href: "/dashboard/my-followers",
+  //   icon: FaUsers,
+  //   current: false,
+  // },
+  // {
+  //   name: "My Followings",
+  //   href: "/dashboard/my-followings",
+  //   icon: FaUsers,
+  //   current: false,
+  // },
+  // {
+  //   name: "Create Plan",
+  //   href: "/dashboard/add-plan",
+  //   icon: FaCalendarPlus,
+  //   current: false,
+  // },
   {
     name: "Add Category",
     href: "/dashboard/add-category",
     icon: FaTags,
     current: false,
   },
-  {
-    name: "My Earnings",
-    href: "/dashboard/my-earnings",
-    icon: FaWallet,
-    current: false,
-  },
+  // {
+  //   name: "My Earnings",
+  //   href: "/dashboard/my-earnings",
+  //   icon: FaWallet,
+  //   current: false,
+  // },
 ];
 
 function classNames(...classes) {

@@ -48,50 +48,50 @@ const AccountSummaryDashboard = ({}) => {
   //total earnings
 
   const totalEarnings = 0;
-  const stats = [
-    {
-      icon: <FaEye />,
-      label: "Views",
-      value: totalViews,
-      bgColor: "bg-blue-500",
-    },
-    {
-      icon: <FaUsers />,
-      label: "Followers",
-      value: totalFollowers || 0,
-      bgColor: "bg-purple-500",
-    },
-    {
-      icon: <FaThumbsUp />,
-      label: "Likes",
-      value: totalLikes || 0,
-      bgColor: "bg-yellow-500",
-    },
-    {
-      icon: <FaThumbsDown />,
-      label: "Dislikes",
-      value: totalDislikes || 0,
-      bgColor: "bg-red-500",
-    },
-    {
-      icon: <FaUsers />,
-      label: "Following",
-      value: totalFollowing || 0,
-      bgColor: "bg-indigo-500",
-    },
-    {
-      icon: <FaFlag />,
-      label: "Posts",
-      value: userPosts?.length || 0,
-      bgColor: "bg-pink-500",
-    },
-    {
-      icon: <FaUsers />,
-      label: "Ranking",
-      value: "1st",
-      bgColor: "bg-teal-500",
-    },
-  ];
+  // const stats = [
+  //   {
+  //     icon: <FaEye />,
+  //     label: "Views",
+  //     value: totalViews,
+  //     bgColor: "bg-blue-500",
+  //   },
+  //   {
+  //     icon: <FaUsers />,
+  //     label: "Followers",
+  //     value: totalFollowers || 0,
+  //     bgColor: "bg-purple-500",
+  //   },
+  //   {
+  //     icon: <FaThumbsUp />,
+  //     label: "Likes",
+  //     value: totalLikes || 0,
+  //     bgColor: "bg-yellow-500",
+  //   },
+  //   {
+  //     icon: <FaThumbsDown />,
+  //     label: "Dislikes",
+  //     value: totalDislikes || 0,
+  //     bgColor: "bg-red-500",
+  //   },
+  //   {
+  //     icon: <FaUsers />,
+  //     label: "Following",
+  //     value: totalFollowing || 0,
+  //     bgColor: "bg-indigo-500",
+  //   },
+  //   {
+  //     icon: <FaFlag />,
+  //     label: "Posts",
+  //     value: userPosts?.length || 0,
+  //     bgColor: "bg-pink-500",
+  //   },
+  //   {
+  //     icon: <FaUsers />,
+  //     label: "Ranking",
+  //     value: "1st",
+  //     bgColor: "bg-teal-500",
+  //   },
+  // ];
 
   return (
     <div className="p-4">
@@ -100,7 +100,7 @@ const AccountSummaryDashboard = ({}) => {
        font-bold text-2xl text-gray-800 mb-4
       "
       >
-        Welcome Back:Masynctech
+        Welcome Back
       </p>
       {/* display account verification status */}
       {/* {mutation.isPending ? (
@@ -116,7 +116,7 @@ const AccountSummaryDashboard = ({}) => {
         <AlertMessage type="success" message={mutation?.data?.message} />
       ) : null} */}
 
-      {!isEmailVerified && (
+      {/* {!isEmailVerified && (
         <div
           className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4"
           role="alert"
@@ -148,9 +148,9 @@ const AccountSummaryDashboard = ({}) => {
             to your account for important notifications.
           </p>
         </div>
-      )}
+      )} */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, index) => (
+        {/* {stats.map((stat, index) => (
           <div
             key={index}
             className={`${stat.bgColor} text-white rounded-lg shadow-lg p-6`}
@@ -163,7 +163,7 @@ const AccountSummaryDashboard = ({}) => {
               </div>
             </div>
           </div>
-        ))}
+        ))} */}
       </div>
     </div>
   );
