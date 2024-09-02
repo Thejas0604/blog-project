@@ -1,9 +1,10 @@
-import React from 'react'
+import React from "react";
+import { Button } from "flowbite-react";
 
 function Home() {
   return (
-    <div>Home</div>
-  )
+    <p>Hee hee</p>
+  );
 }
 
-export default Home
+export default Home;
