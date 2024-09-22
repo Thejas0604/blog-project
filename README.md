@@ -40,7 +40,7 @@ npm run start
 ```
 5. Navigate to the frontend directory and install the necessary Node.js modules.
 ```
-cd ../frontend
+cd frontend
 npm install
 ```
   

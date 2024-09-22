@@ -2,11 +2,14 @@ const express = require("express");
 const categoryRouter = express.Router();
 const categoryController = require("../../controllers/categories/categoryController");
 const isAuthenticated = require("../../middleware/isAuthenticated");
+const verifyRole = require("../../middleware/roleMiddleware")
+
 
 //Create Category
 categoryRouter.post(
   "/create",
   isAuthenticated,
+  verifyRole("admin"),
   categoryController.createCategory
 );
 
@@ -20,6 +23,7 @@ categoryRouter.get("/:categoryId", categoryController.getCategoryById);
 categoryRouter.put(
   "/:categoryId",
   isAuthenticated,
+  verifyRole("admin"),
   categoryController.updateCategory
 );
 
@@ -27,6 +31,7 @@ categoryRouter.put(
 categoryRouter.delete(
   "/:categoryId",
   isAuthenticated,
+  verifyRole("admin"),
   categoryController.deleteCategory
 );
 
