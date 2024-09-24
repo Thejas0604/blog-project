@@ -14,7 +14,7 @@ categoryController = {
 
     const categoryCreated = await Category.create({
       categoryName,
-      createdBy: req.user,
+      createdBy: req.user.id,
       categoryDescription,
     });
 

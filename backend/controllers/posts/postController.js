@@ -12,7 +12,7 @@ postController = {
       content,
       categoryNew,
       postImage: req.file,
-      author: req.user,
+      author: req.user.id,
     });
     res.status(201).json({
       status: "success",
