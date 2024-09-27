@@ -1,96 +1,35 @@
-import CreatePost from "./components/Posts/CreatePost";
-import GetAllPosts from "./components/Posts/GetAllPosts";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
-import PublicNavbar from "./components/Navbar/PublicNavbar";
-import Home from "./components/Home/Home";
-import UpdatePost from "./components/Posts/UpdatePost";
-import PostDetails from "./components/Posts/PostDetails";
-import Login from "./components/User/Login";
-import Register from "./components/User/Register";
-import Profile from "./components/User/Profile";
-import PrivateNavbar from "./components/Navbar/PrivateNavbar";
-import { useSelector } from "react-redux";
-import { useQuery } from "@tanstack/react-query";
-import { useDispatch } from "react-redux";
-import React, { useEffect } from "react";
-import { isAuthenticated } from "../redux/slices/authSlices";
-import { checkAuthStatus } from "./Services/usersAPI";
-import AuthRoute from "./components/AuthRoute/AuthRoute";
-import UserDashbaord from "./components/User/UserDashboard";
-import AccountSummaryDashboard from "./components/User/AccountSummaryDashboard";
-import AddCategory from "./components/Category/AddCategory";
+import { useState } from 'react'
+import reactLogo from './assets/react.svg'
+import viteLogo from '/vite.svg'
+import './App.css'
 
 function App() {
-  //check authenticated status
-  const { isError, isLoading, data, error, refetch } = useQuery({
-    queryKey: ["user-auth"],
-    queryFn: checkAuthStatus,
-  });
-  //console.log(data);
-  //dispatch
-  const dispatch = useDispatch();
-  useEffect(() => {
-    dispatch(isAuthenticated(data));
-  }, [data]);
-  //get the loggedin user
-  const { userAuth } = useSelector((state) => state.auth);
-  return (
-    <div>
-      <BrowserRouter>
-        {userAuth ? <PrivateNavbar /> : <PublicNavbar />}
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/list" element={<GetAllPosts />} />
-          <Route path="/posts/:postId" element={<PostDetails />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route
-            path="/dashboard"
-            element={
-              <AuthRoute>
-                <UserDashbaord />
-              </AuthRoute>
-            }
-          >
-            <Route
-              path="create-post"
-              element={
-                <AuthRoute>
-                  <CreatePost />
-                </AuthRoute>
-              }
-            />
-            <Route
-              path=""
-              element={
-                <AuthRoute>
-                  <AccountSummaryDashboard />
-                </AuthRoute>
-              }
-            />
-            <Route
-              path="add-category"
-              element={
-                <AuthRoute>
-                  <AddCategory />
-                </AuthRoute>
-              }
-            />
-          </Route>
-          <Route
-            path="/profile"
-            element={
-              <AuthRoute>
-                <Profile />
-              </AuthRoute>
-            }
-          />
+  const [count, setCount] = useState(0)
 
-          {/* <Route path="/posts/update-post/:postId" element={<UpdatePost />} /> */}
-        </Routes>
-      </BrowserRouter>
-    </div>
-  );
+  return (
+    <>
+      <div>
+        <a href="https://vitejs.dev" target="_blank">
+          <img src={viteLogo} className="logo" alt="Vite logo" />
+        </a>
+        <a href="https://react.dev" target="_blank">
+          <img src={reactLogo} className="logo react" alt="React logo" />
+        </a>
+      </div>
+      <h1>Vite + React</h1>
+      <div className="card">
+        <button onClick={() => setCount((count) => count + 1)}>
+          count is {count}
+        </button>
+        <p>
+          Edit <code>src/App.jsx</code> and save to test HMR
+        </p>
+      </div>
+      <p className="read-the-docs">
+        Click on the Vite and React logos to learn more
+      </p>
+    </>
+  )
 }
 
-export default App;
+export default App
