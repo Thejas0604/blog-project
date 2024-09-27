@@ -67,16 +67,12 @@ For detailed information about the API endpoints, please refer to the [API Overv
 - **MongoDB**: NoSQL database for storing blog data.
 - **Mongoose**: ODM for MongoDB.
 - **React.js**: JavaScript library for building user interfaces.
-- **Redux**: State management library for React.
-- **Tailwind CSS**: Utility-first CSS framework for styling.
 - **Cloudinary**: Cloud service for managing images.
 - **Multer**: Middleware for handling multipart/form-data.
 - **bcryptjs**: Library for hashing passwords.
 - **jsonwebtoken**: Library for generating and verifying JWT tokens.
 - **dotenv**: Module for loading environment variables.
 - **passport**: Middleware for authentication.
-- **passport-jwt**: Passport strategy for authenticating with a JSON Web Token.
-- **passport-google-oauth20**: Passport strategy for authenticating with Google OAuth 2.0.
 
 ## Features
 - **User Authentication and Authorization**: Secure login, registration, and role-based access control.
