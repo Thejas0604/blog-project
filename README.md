@@ -78,7 +78,7 @@ For detailed information about the API endpoints, please refer to the [API Overv
 - **User Authentication and Authorization**: Secure login, registration, and role-based access control.
 - **Post Management**: Create, retrieve, update, and delete blog posts.
 - **Image Upload and Management**: Upload and manage images using Cloudinary.
-- **Responsive Design**: Mobile-friendly layout using Tailwind CSS.
+- **Responsive Design**: Mobile-friendly layout.
 - **Environment Configuration**: Securely manage environment variables with dotenv.
 - **Middleware and Templating**: Use Express, body-parser, and cookie-parser for routing and views.
 
