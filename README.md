@@ -72,7 +72,6 @@ For detailed information about the API endpoints, please refer to the [API Overv
 - **bcryptjs**: Library for hashing passwords.
 - **jsonwebtoken**: Library for generating and verifying JWT tokens.
 - **dotenv**: Module for loading environment variables.
-- **passport**: Middleware for authentication.
 
 ## Features
 - **User Authentication and Authorization**: Secure login, registration, and role-based access control.
