@@ -42,7 +42,8 @@ const userController = {
                 });
             }
             //matching the password
-            const isMatchedPW = bcryptjs.compare(password, user.password);
+            const isMatchedPW = await bcryptjs.compare(password, user.password);
+
             if (!isMatchedPW) {
                 return res.status(400).json({
                     message: `Invalid credentials`,

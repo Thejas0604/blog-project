@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Checkbox from "@mui/material/Checkbox";
@@ -14,6 +15,10 @@ import Stack from "@mui/material/Stack";
 import MuiCard from "@mui/material/Card";
 import { styled } from "@mui/material/styles";
 import ForgotPassword from "./ForgotPassword";
+import { loginAPI } from "../../services/authAPI";
+import { useNavigate } from "react-router-dom";
+import CircularProgress from "@mui/material/CircularProgress";
+
 //import { GoogleIcon, FacebookIcon, SitemarkIcon } from './CustomIcons';
 
 const Card = styled(MuiCard)(({ theme }) => ({
@@ -57,12 +62,15 @@ const CustomTextField = styled(TextField)(({ theme }) => ({
     },
 }));
 
-export default function Login(props) {
-    const [emailError, setEmailError] = React.useState(false);
-    const [emailErrorMessage, setEmailErrorMessage] = React.useState("");
+export default function Login() {
+    const navigate = useNavigate();
+    const [usernameError, setUsernameError] = React.useState(false);
+    const [usernameErrorMessage, setUsernameErrorMessage] = React.useState("");
     const [passwordError, setPasswordError] = React.useState(false);
     const [passwordErrorMessage, setPasswordErrorMessage] = React.useState("");
     const [open, setOpen] = React.useState(false);
+    const [loading, setLoading] = useState(false);
+    const [loginError, setLoginError] = useState("");
 
     const handleClickOpen = () => {
         setOpen(true);
@@ -72,30 +80,44 @@ export default function Login(props) {
         setOpen(false);
     };
 
-    const handleSubmit = (event) => {
+    const handleSubmit = async (event) => {
         event.preventDefault();
         if (validateInputs()) {
             const data = new FormData(event.currentTarget);
-            console.log({
-                email: data.get("email"),
-                password: data.get("password"),
-            });
+            setLoading(true);
+            try {
+                const response = await loginAPI({
+                    username: data.get("username"),
+                    password: data.get("password"),
+                });
+                if (response?.status === 200) {
+                    localStorage.setItem("token", response.data.token);
+                    console.log("Login successful");
+                    navigate("/list");
+                } else {
+                    setLoginError("Invalid username or password.");
+                }
+            } catch (error) {
+                setLoginError("Invalid username or password.");
+            } finally {
+                setLoading(false);
+            }
         }
     };
 
     const validateInputs = () => {
-        const email = document.getElementById("email");
+        const username = document.getElementById("username");
         const password = document.getElementById("password");
 
         let isValid = true;
 
-        if (!email.value || !/\S+@\S+\.\S+/.test(email.value)) {
-            setEmailError(true);
-            setEmailErrorMessage("Please enter a valid email address.");
+        if (!username.value) {
+            setUsernameError(true);
+            setUsernameErrorMessage("Please enter a username.");
             isValid = false;
         } else {
-            setEmailError(false);
-            setEmailErrorMessage("");
+            setUsernameError(false);
+            setUsernameErrorMessage("");
         }
 
         if (!password.value || password.value.length < 6) {
@@ -139,21 +161,21 @@ export default function Login(props) {
                     }}
                 >
                     <FormControl>
-                        <FormLabel htmlFor="email">Email</FormLabel>
+                        <FormLabel htmlFor="username">Username</FormLabel>
                         <CustomTextField
-                            error={emailError}
-                            helperText={emailErrorMessage}
-                            id="email"
-                            type="email"
-                            name="email"
-                            placeholder="your@email.com"
-                            autoComplete="email"
+                            error={usernameError}
+                            helperText={usernameErrorMessage}
+                            id="username"
+                            type="text"
+                            name="username"
+                            placeholder="your username"
+                            autoComplete="username"
                             autoFocus
                             required
                             fullWidth
                             variant="outlined"
-                            color={emailError ? "error" : "primary"}
-                            sx={{ ariaLabel: "email" }}
+                            color={usernameError ? "error" : "primary"}
+                            sx={{ ariaLabel: "username" }}
                         />
                     </FormControl>
                     <FormControl>
@@ -192,14 +214,19 @@ export default function Login(props) {
                         control={<Checkbox value="remember" color="primary" />}
                         label="Remember me"
                     />
+                    {loginError && (
+                        <Typography color="error" sx={{ textAlign: "center" }}>
+                            {loginError}
+                        </Typography>
+                    )}
                     <ForgotPassword open={open} handleClose={handleClose} />
                     <Button
                         type="submit"
                         fullWidth
                         variant="contained"
-                        
+                        disabled={loading}
                     >
-                        Login
+                        {loading ? <CircularProgress size={24} /> : "Login"}
                     </Button>
                     <Typography sx={{ textAlign: "center" }}>
                         Don&apos;t have an account?{" "}

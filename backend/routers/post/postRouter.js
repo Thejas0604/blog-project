@@ -31,4 +31,7 @@ postRouter.put(
 //delete post
 postRouter.delete("/:postId", isAuthenticated, postController.deletePost);
 
+//increment likes
+postRouter.put("/:postId/like", isAuthenticated, postController.incrementLikes);
+
 module.exports = postRouter;

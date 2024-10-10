@@ -13,6 +13,7 @@ postController = {
             categoryNew,
             postImage: req.file,
             author: req.user.id,
+            likes: 0,
         });
         res.status(201).json({
             status: "success",
@@ -76,6 +77,21 @@ postController = {
             status: "success",
             message: "Post deleted successfully",
             deletedPost,
+        });
+    }),
+    //increment likes
+    incrementLikes: asyncHandler(async (req, res) => {
+        const postId = req.params.postId;   
+        const postFound = await Post.findById(postId);
+        if (!postFound) {
+            throw new Error("Post not found");
+        }
+        postFound.likes += 1;
+        await postFound.save();
+        res.status(200).json({
+            status: "success",
+            message: "Likes incremented successfully",
+            postFound,
         });
     }),
 };

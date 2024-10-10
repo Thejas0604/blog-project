@@ -1,7 +1,7 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "API for the backend",
+  "description": "API",
   "main": "index.js",
   "scripts": {
     "start": "nodemon index.js"

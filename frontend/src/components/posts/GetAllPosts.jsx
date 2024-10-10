@@ -13,7 +13,7 @@ function GetAllPosts() {
             try {
                 const fetchedPosts = await getAllPosts();
                 setPosts(fetchedPosts);
-                console.log(fetchedPosts);
+                //console.log(fetchedPosts);
             } catch (error) {
                 console.error("Error fetching posts:", error);
             }

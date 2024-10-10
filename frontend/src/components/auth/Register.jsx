@@ -1,4 +1,5 @@
 import * as React from "react";
+import {useState} from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Checkbox from "@mui/material/Checkbox";
@@ -14,6 +15,9 @@ import Stack from "@mui/material/Stack";
 import MuiCard from "@mui/material/Card";
 import { styled } from "@mui/material/styles";
 import ForgotPassword from "./ForgotPassword";
+import { registerAPI } from "../../services/authAPI";
+import { useNavigate } from "react-router-dom";
+import CircularProgress from "@mui/material/CircularProgress";
 //import { GoogleIcon, FacebookIcon, SitemarkIcon } from './CustomIcons';
 
 const Card = styled(MuiCard)(({ theme }) => ({
@@ -56,7 +60,8 @@ const CustomTextField = styled(TextField)(({ theme }) => ({
     },
 }));
 
-export default function Register(props) {
+export default function Register() {
+    const navigate = useNavigate();
     const [userNameError, setUserNameError] = React.useState(false);
     const [userNameErrorMessage, setUserNameErrorMessage] = React.useState("");
     const [emailError, setEmailError] = React.useState(false);
@@ -67,17 +72,28 @@ export default function Register(props) {
         React.useState(false);
     const [confirmPasswordErrorMessage, setConfirmPasswordErrorMessage] =
         React.useState("");
+    const [loading, setLoading] = useState(false);
 
     const handleSubmit = (event) => {
         event.preventDefault();
         if (validateInputs()) {
             const data = new FormData(event.currentTarget);
-            console.log({
+            setLoading(true);
+            registerAPI({
                 username: data.get("username"),
                 email: data.get("email"),
                 password: data.get("password"),
-                confirmPassword: data.get("confirm-password"),
-            });
+            })
+                .then((response) => {
+                    if (response.status === "success") {
+                        navigate("/login");
+                    } else {
+                        console.error(response.message);
+                    }
+                })
+                .catch((error) => {
+                    console.error("Registration failed:", error);
+                });
         }
     };
 
@@ -233,8 +249,9 @@ export default function Register(props) {
                         type="submit"
                         fullWidth
                         variant="contained"
+                        disabled={loading}
                     >
-                        Register
+                        {loading ? <CircularProgress size={24} /> : "Register"}
                     </Button>
                     <Typography sx={{ textAlign: "center" }}>
                         Already have an account?{" "}

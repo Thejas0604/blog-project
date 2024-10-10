@@ -10,7 +10,7 @@ import CardActions from "@mui/material/CardActions";
 export default function PostCard(props) {
     const handleClick = () => {
         //example thing
-        window.location.href = "https://www.youtube.com";
+        window.location.href = "https://www.youtube.com/watch?v=xvFZjo5PgG0&pp=ygUJcmljayByb2xs";
     };
     return (
         <Card sx={{ maxWidth: 345, mb: "10px", borderRadius:"10px" }}>
