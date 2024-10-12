@@ -86,18 +86,14 @@ export default function PrivateNavbar() {
                             alignItems: "center",
                         }}
                     >
-                        <Link href="/login">
-                            <Button color="primary" variant="text" size="small">
-                                Login
-                            </Button>
-                        </Link>
-                        <Link href="/register">
+                        
+                        <Link href="/">
                             <Button
                                 color="primary"
                                 variant="contained"
                                 size="small"
                             >
-                                Register
+                                Logout
                             </Button>
                         </Link>
                     </Box>
@@ -136,24 +132,13 @@ export default function PrivateNavbar() {
                                     <Link href="/list">View Blogs</Link>
                                 </MenuItem>
                                 <MenuItem>
-                                    <Link href="/register">
-                                        <Button
-                                            color="primary"
-                                            variant="contained"
-                                            fullWidth
-                                        >
-                                            Register
-                                        </Button>
-                                    </Link>
-                                </MenuItem>
-                                <MenuItem>
-                                    <Link href="/login">
+                                    <Link href="/">
                                         <Button
                                             color="primary"
                                             variant="outlined"
                                             fullWidth
                                         >
-                                            Login
+                                            Logout
                                         </Button>
                                     </Link>
                                 </MenuItem>

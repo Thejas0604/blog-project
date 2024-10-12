@@ -1,4 +1,4 @@
-import * as React from "react";
+import React, { useContext } from "react";
 import "@fontsource/roboto/300.css";
 import "@fontsource/roboto/400.css";
 import "@fontsource/roboto/500.css";
@@ -8,10 +8,11 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import CssBaseline from "@mui/material/CssBaseline";
 import GetAllPosts from "./components/posts/GetAllPosts";
 import PublicNavbar from "./components/navbar/PublicNav";
+import PrivateNavbar from "./components/navbar/PrivateNav";
 import Home from "./components/home/Home";
 import Login from "./components/auth/Login";
 import Register from "./components/auth/Register";
-
+import { AuthContext } from "./context/AuthContext";
 
 const darkTheme = createTheme({
     palette: {
@@ -23,12 +24,16 @@ const darkTheme = createTheme({
 });
 
 function App() {
+    const { user } = useContext(AuthContext);
+    //console.log(user);
+
     return (
         <ThemeProvider theme={darkTheme}>
             <CssBaseline />
             <div>
+                {console.log("Current user:", user)}
                 <BrowserRouter>
-                    <PublicNavbar />
+                    {user ? <PrivateNavbar /> : <PublicNavbar />}
                     <Routes>
                         <Route path="/" element={<Home />} />
                         <Route path="/list" element={<GetAllPosts />} />

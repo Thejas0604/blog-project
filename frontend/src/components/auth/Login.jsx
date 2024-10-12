@@ -18,6 +18,7 @@ import ForgotPassword from "./ForgotPassword";
 import { loginAPI } from "../../services/authAPI";
 import { useNavigate } from "react-router-dom";
 import CircularProgress from "@mui/material/CircularProgress";
+import { AuthContext } from "../../context/AuthContext";
 
 //import { GoogleIcon, FacebookIcon, SitemarkIcon } from './CustomIcons';
 
@@ -71,6 +72,7 @@ export default function Login() {
     const [open, setOpen] = React.useState(false);
     const [loading, setLoading] = useState(false);
     const [loginError, setLoginError] = useState("");
+    const { user, dispatch } = React.useContext(AuthContext);
 
     const handleClickOpen = () => {
         setOpen(true);
@@ -91,9 +93,10 @@ export default function Login() {
                     password: data.get("password"),
                 });
                 if (response?.status === 200) {
+                    dispatch({ type: "LOGIN", payload: response.data.token });
                     localStorage.setItem("token", response.data.token);
-                    console.log("Login successful");
                     navigate("/list");
+                    //console.log(user);
                 } else {
                     setLoginError("Invalid username or password.");
                 }
