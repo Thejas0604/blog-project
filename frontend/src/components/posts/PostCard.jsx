@@ -6,14 +6,15 @@ import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import CardActionArea from "@mui/material/CardActionArea";
 import CardActions from "@mui/material/CardActions";
+import { useNavigate } from "react-router-dom";
 
 export default function PostCard(props) {
+    const navigate = useNavigate();
     const handleClick = () => {
-        //example thing
-        window.location.href = "https://www.youtube.com/watch?v=xvFZjo5PgG0&pp=ygUJcmljayByb2xs";
+        navigate(`/posts/${props.postId}`)
     };
     return (
-        <Card sx={{ maxWidth: 345, mb: "10px", borderRadius:"10px" }}>
+        <Card sx={{ maxWidth: 345, mb: "10px", borderRadius: "10px" }}>
             <CardActionArea>
                 <CardMedia
                     component="img"

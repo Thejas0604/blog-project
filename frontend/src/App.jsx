@@ -13,6 +13,7 @@ import Home from "./components/home/Home";
 import Login from "./components/auth/Login";
 import Register from "./components/auth/Register";
 import { AuthContext } from "./context/AuthContext";
+import { PostDetails } from "./components/posts/PostDetails";
 
 const darkTheme = createTheme({
     palette: {
@@ -39,6 +40,7 @@ function App() {
                         <Route path="/list" element={<GetAllPosts />} />
                         <Route path="/login" element={<Login />} />
                         <Route path="/register" element={<Register />} />
+                        <Route path="/posts/:id" element={<PostDetails />} />
                     </Routes>
                 </BrowserRouter>
             </div>

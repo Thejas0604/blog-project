@@ -1,5 +1,5 @@
 import React from "react";
-import PostCard from "./postCard";
+import PostCard from "./PostCard";
 import Box from "@mui/material/Box";
 import Grid from "@mui/material/Grid2";
 import Container from "@mui/material/Container";
@@ -13,13 +13,14 @@ function GetAllPosts() {
             try {
                 const fetchedPosts = await getAllPosts();
                 setPosts(fetchedPosts);
-                //console.log(fetchedPosts);
             } catch (error) {
                 console.error("Error fetching posts:", error);
             }
         };
         fetchPosts();
     }, []);
+    console.log(posts);
+
     return (
         <Container
             sx={{
@@ -45,9 +46,10 @@ function GetAllPosts() {
                                     title={post.title}
                                     content={post.content}
                                     image={post.postImage.path}
+                                    postId={post._id}
                                 />
                             </Grid>
-                        ))
+                        ))  
                     ) : (
                         <p>No posts available</p>
                     )}
