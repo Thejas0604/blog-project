@@ -12,6 +12,8 @@ import Drawer from "@mui/material/Drawer";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import Link from "@mui/material/Link";
+import { AuthContext } from "../../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 //import Logo from "../../assets/react.svg";
 
 const StyledToolbar = styled(Toolbar)(({ theme }) => ({
@@ -30,9 +32,17 @@ const StyledToolbar = styled(Toolbar)(({ theme }) => ({
 
 export default function PrivateNavbar() {
     const [open, setOpen] = React.useState(false);
+    const { user, dispatch } = React.useContext(AuthContext);
+    const navigate = useNavigate();
 
     const toggleDrawer = (newOpen) => () => {
         setOpen(newOpen);
+    };
+
+    const handleLogout = () => {
+        dispatch({ type: "LOGOUT" });
+        localStorage.removeItem("token");
+        navigate("/");
     };
 
     return (
@@ -86,16 +96,14 @@ export default function PrivateNavbar() {
                             alignItems: "center",
                         }}
                     >
-                        
-                        <Link href="/">
-                            <Button
-                                color="primary"
-                                variant="contained"
-                                size="small"
-                            >
-                                Logout
-                            </Button>
-                        </Link>
+                        <Button
+                            onClick={handleLogout}
+                            color="primary"
+                            variant="contained"
+                            size="small"
+                        >
+                            Logout
+                        </Button>
                     </Box>
                     {/* Mobile view, have to optimize */}
                     <Box sx={{ display: { sm: "flex", md: "none" } }}>
