@@ -14,6 +14,11 @@ import Login from "./components/auth/Login";
 import Register from "./components/auth/Register";
 import { AuthContext } from "./context/AuthContext";
 import { PostDetails } from "./components/posts/PostDetails";
+import CreatePost from "./components/posts/CreatePost";
+import EditPost from "./components/posts/EditPost";
+import GetAllCategories from "./components/categories/GetAllCategories";
+import CreateCategory from "./components/categories/CreateCategory";
+import EditCategory from "./components/categories/EditCategory";
 
 const darkTheme = createTheme({
     palette: {
@@ -32,7 +37,6 @@ function App() {
         <ThemeProvider theme={darkTheme}>
             <CssBaseline />
             <div>
-                {console.log("Current user:", user)}
                 <BrowserRouter>
                     {user ? <PrivateNavbar /> : <PublicNavbar />}
                     <Routes>
@@ -41,6 +45,11 @@ function App() {
                         <Route path="/login" element={<Login />} />
                         <Route path="/register" element={<Register />} />
                         <Route path="/posts/:id" element={<PostDetails />} />
+                        <Route path="/create-post" element={<CreatePost />} />
+                        <Route path="/edit-post/:id" element={<EditPost />} />
+                        <Route path="/categories" element={<GetAllCategories />} />
+                        <Route path="/create-category" element={<CreateCategory />} />
+                        <Route path="/edit-category/:id" element={<EditCategory />} />
                     </Routes>
                 </BrowserRouter>
             </div>

@@ -25,7 +25,7 @@ export const getPostById = async (postId) => {
 
 //delete post
 export const deletePost = async (postId) => {
-    const response = await axios.delete(`${base_URL}/${postId}`, {
+    const response = await axiosInstance.delete(`${base_URL}/${postId}`, {
         withCredentials: true,
     });
     return response.data;
@@ -33,13 +33,25 @@ export const deletePost = async (postId) => {
 
 //update post
 export const updatePost = async (postData) => {
-    const response = await axios.put(
+    const response = await axiosInstance.put(
         `${base_URL}/${postData?.postId}`,
         {
             title: postData.title,
             content: postData.description,
         },
         { withCredentials: true }
+    );
+    return response.data;
+};
+
+//like post
+export const likePost = async (postId) => {
+    const response = await axiosInstance.put(
+        `${base_URL}/${postId}/like`,
+        {},
+        {
+            withCredentials: true,
+        }
     );
     return response.data;
 };

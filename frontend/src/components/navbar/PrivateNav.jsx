@@ -87,6 +87,26 @@ export default function PrivateNavbar() {
                                     View Blogs
                                 </Button>
                             </Link>
+                            <Link href="/create-post">
+                                <Button
+                                    variant="text"
+                                    color="primary"
+                                    size="large"
+                                    sx={{ minWidth: 0 }}
+                                >
+                                    Create Post
+                                </Button>
+                            </Link>
+                            <Link href="/categories">
+                                <Button
+                                    variant="text"
+                                    color="primary"
+                                    size="large"
+                                    sx={{ minWidth: 0 }}
+                                >
+                                    Categories
+                                </Button>
+                            </Link>
                         </Box>
                     </Box>
                     <Box
@@ -138,6 +158,12 @@ export default function PrivateNavbar() {
                                 <Divider sx={{ my: 3 }} />
                                 <MenuItem>
                                     <Link href="/list">View Blogs</Link>
+                                </MenuItem>
+                                <MenuItem>
+                                    <Link href="/create-post">Create Post</Link>
+                                </MenuItem>
+                                <MenuItem>
+                                    <Link href="/categories">Categories</Link>
                                 </MenuItem>
                                 <MenuItem>
                                     <Link href="/">

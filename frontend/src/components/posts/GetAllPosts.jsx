@@ -19,7 +19,6 @@ function GetAllPosts() {
         };
         fetchPosts();
     }, []);
-    console.log(posts);
 
     return (
         <Container
