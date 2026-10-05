@@ -1,0 +1,12 @@
+# LOCAL TESTING ONLY. Never use on the server.
+# Publishes the app on localhost:3000 and uses a local network instead of Caddy's.
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+services:
+  blog:
+    ports:
+      - "127.0.0.1:3000:3000"
+    networks: !override
+      - default
+
+networks:
+  caddy: !reset null

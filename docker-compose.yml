@@ -1,0 +1,23 @@
+services:
+  blog:
+    build: .
+    init: true
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - blog-data:/app/data
+    mem_limit: 300m
+    # No published ports: Caddy reaches this service as blog:3000 over the shared network.
+    networks:
+      caddy:
+        aliases:
+          - blog
+
+volumes:
+  blog-data:
+
+networks:
+  caddy:
+    external: true
+    # Name of Caddy's existing Docker network (set CADDY_NETWORK in the shell or .env to override).
+    name: ${CADDY_NETWORK:-caddy}
