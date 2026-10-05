@@ -11,8 +11,10 @@ import { useNavigate } from "react-router-dom";
 const makeExcerpt = (markdown = "", max = 160) => {
     const text = markdown
         .replace(/```[\s\S]*?```/g, " ")
-        .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
-        .replace(/[#>*_`~-]+/g, " ")
+        .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+        .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+        .replace(/^\s*[-*+] \[[ xX]\]/gm, " ")
+        .replace(/[#>*_`~|-]+/g, " ")
         .replace(/\s+/g, " ")
         .trim();
     return text.length > max ? text.slice(0, max).trimEnd() + "..." : text;

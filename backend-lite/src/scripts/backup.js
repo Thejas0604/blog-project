@@ -4,7 +4,7 @@ const path = require('path');
 const db = require('../db');
 
 const KEEP = 14;
-const dir = path.join(path.dirname(process.env.DB_PATH || './data/blog.db'), 'backups');
+const dir = path.join(path.dirname(db.name), 'backups');
 fs.mkdirSync(dir, { recursive: true });
 
 const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+/, '').replace('T', '-');

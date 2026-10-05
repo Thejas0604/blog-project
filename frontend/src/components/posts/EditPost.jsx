@@ -17,6 +17,7 @@ import { styled } from "@mui/material/styles";
 import { useNavigate, useParams } from "react-router-dom";
 import { getPostById, updatePost } from "../../services/postsAPI";
 import { getAllCategories } from "../../services/categoryAPI";
+import MarkdownEditor from "./MarkdownEditor";
 
 const StyledCard = styled(Card)(({ theme }) => ({
     padding: theme.spacing(4),
@@ -31,6 +32,7 @@ const EditPost = () => {
     const [fetchLoading, setFetchLoading] = useState(true);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState(false);
+    const [uploading, setUploading] = useState(false);
     const [categories, setCategories] = useState([]);
     const [formData, setFormData] = useState({
         title: "",
@@ -73,6 +75,11 @@ const EditPost = () => {
         e.preventDefault();
         setError("");
         setSuccess(false);
+
+        if (uploading) {
+            setError("Please wait for the image upload to finish");
+            return;
+        }
 
         if (!formData.title || !formData.content) {
             setError("Title and content are required");
@@ -144,16 +151,10 @@ const EditPost = () => {
                         disabled={loading}
                     />
 
-                    <TextField
-                        fullWidth
-                        label="Content (Markdown)"
-                        name="content"
+                    <MarkdownEditor
                         value={formData.content}
-                        onChange={handleChange}
-                        margin="normal"
-                        required
-                        multiline
-                        rows={6}
+                        onChange={(content) => setFormData((prev) => ({ ...prev, content }))}
+                        onBusyChange={setUploading}
                         disabled={loading}
                     />
 
@@ -180,7 +181,7 @@ const EditPost = () => {
                             type="submit"
                             variant="contained"
                             fullWidth
-                            disabled={loading}
+                            disabled={loading || uploading}
                         >
                             {loading ? <CircularProgress size={24} /> : "Update Post"}
                         </Button>

@@ -2,5 +2,8 @@
 # share the Docker network named in docker-compose.yml (default: caddy).
 blog.example.com {
     encode gzip
+    request_body {
+        max_size 6MB
+    }
     reverse_proxy blog:3000
 }

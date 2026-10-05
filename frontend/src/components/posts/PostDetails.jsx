@@ -8,7 +8,7 @@ import Button from "@mui/material/Button";
 import CardActions from "@mui/material/CardActions";
 import Container from "@mui/material/Container";
 import { CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Box } from "@mui/material";
-import ReactMarkdown from "react-markdown";
+import PostContent from "./PostContent";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { getCategoryById } from "../../services/categoryAPI";
@@ -100,14 +100,7 @@ export const PostDetails = () => {
                         {categoryName ? `${categoryName} | ` : ""}
                         {new Date(post.postFound.createdAt).toLocaleDateString()}
                     </Typography>
-                    <Box
-                        sx={{
-                            "& img": { maxWidth: "100%" },
-                            "& pre": { overflowX: "auto" },
-                        }}
-                    >
-                        <ReactMarkdown>{post.postFound.content}</ReactMarkdown>
-                    </Box>
+                    <PostContent content={post.postFound.content} />
                 </CardContent>
                 <CardActions sx={{ justifyContent: "flex-end", px: 2 }}>
                     {user && (

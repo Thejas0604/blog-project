@@ -1,12 +1,13 @@
 # BlogMe Lite documentation
 
-Status (2026-10-05): backend (Phase 1) verified by `curl`. Frontend (Phase 3) read from code; build verified, not clicked through in a browser. Container (Phase 4): the committed Dockerfile now builds (lead-confirmed); the full container checks were run earlier on an equivalent patched copy and are not re-run on the committed file. Droplet (Phase 5) not started, so deploy steps there are unverified.
+Status (2026-10-05): backend (Phase 1) verified by `curl`. Frontend (Phase 3) read from code; build verified, not clicked through in a browser. Container (Phase 4): the committed Dockerfile now builds (lead-confirmed); the full container checks were run earlier on an equivalent patched copy and are not re-run on the committed file. Phase 7 (Markdown editor and image uploads): backend done and curl-verified; frontend built and build-verified, editor not clicked through in a browser. Droplet (Phase 5) not started, so deploy steps there are unverified.
 
 | Doc | What it covers |
 |---|---|
 | [architecture.md](architecture.md) | Components, request flow, frontend auth state, data model, auth flow, deployment topology, design decisions. |
-| [operations.md](operations.md) | Day-to-day running: start/stop, logs, health, admin and password reset, secret rotation, backup and restore, troubleshooting. |
-| [deploy.md](deploy.md) | First-time droplet setup, Caddy snippet, environment, nightly backup cron, test restore. |
+| [writing-posts.md](writing-posts.md) | Owner's guide to the post editor: toolbar, Markdown, adding images, limits, Markdown cheat sheet. |
+| [operations.md](operations.md) | Day-to-day running: start/stop, logs, health, admin and password reset, secret rotation, backup and restore (database and uploads), troubleshooting. |
+| [deploy.md](deploy.md) | First-time droplet setup, Caddy snippet, environment, nightly backup cron (database and uploads), test restore. |
 | [development.md](development.md) | Local setup (backend, frontend, Docker), env vars, tests, project layout, conventions. |
 | [api/overview.md](api/overview.md) | Every endpoint: auth, request body, response keys, status codes, `curl`. |
 | [milestones.md](milestones.md) | Status of each PLAN.md phase, what was built, how it was verified, known gaps. |

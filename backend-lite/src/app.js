@@ -1,6 +1,6 @@
-require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const express = require('express');
 const cookieParser = require('cookie-parser');
 
@@ -26,9 +26,28 @@ app.get('/health', (req, res) => res.json({ status: 'ok' }));
 app.use('/api/v1/user', require('./routes/user'));
 app.use('/api/v1/posts', require('./routes/posts'));
 app.use('/api/v1/category', require('./routes/categories'));
+app.use('/api/v1/uploads', require('./routes/uploads'));
 
 // Unknown /api routes: JSON 404. Must stay before the SPA fallback below.
 app.use('/api', (req, res, next) => next(Object.assign(new Error('Not found'), { status: 404 })));
+
+// Uploaded images. Before the SPA fallback so a missing file is a JSON 404.
+app.use(
+  '/uploads',
+  (req, res, next) => {
+    res.set('X-Content-Type-Options', 'nosniff');
+    res.set('Content-Security-Policy', "default-src 'none'; img-src 'self'; sandbox");
+    next();
+  },
+  express.static(require('./uploadDir'), {
+    index: false,
+    dotfiles: 'deny',
+    redirect: false,
+    fallthrough: false,
+    maxAge: '365d',
+    immutable: true,
+  })
+);
 
 // Built frontend (copied to public/ in the Docker image). Absent in dev: skip.
 const publicDir = path.join(__dirname, '..', 'public');
@@ -47,6 +66,8 @@ app.use((err, req, res, next) => {
   if (status === 500) console.error(err);
   let message = err.message;
   if (status === 500) message = 'Internal server error';
+  else if (status === 404 && req.originalUrl.startsWith('/uploads')) message = 'Not found'; // no filesystem paths
+  else if (err.type === 'entity.too.large' && req.originalUrl.startsWith('/api/v1/uploads')) message = 'Image too large (max 5 MB)';
   else if (err.type === 'entity.parse.failed') message = 'Invalid JSON body';
   res.status(status).json({ status: 'fail', message });
 });

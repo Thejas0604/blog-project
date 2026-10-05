@@ -18,11 +18,12 @@ Keep it lite. If a feature is not listed under "In scope", do not build it.
 - One admin user (the owner) who can log in, create, edit and delete posts and categories.
 - Public visitors can read the post list, a single post, and categories.
 - Post fields: title, content (Markdown), category, created and updated timestamps.
+- **Authoring (Phase 7):** a Markdown editor with a toolbar, live preview and paste/drag-drop image insertion. Images (PNG, JPEG, GIF, WebP, max 5 MB) are uploaded by the admin to `data/uploads` on the same volume and referenced from the Markdown by URL. Content stays Markdown; raw HTML is never rendered.
 - Auth: **username** and password, JWT in an HttpOnly cookie.
 - Single-container Docker deployment, one volume for the database, nightly backup.
 
 **Out of scope for v1** (remove from the lite build, do not port)
-- Google OAuth, Passport, Cloudinary and multer uploads, followers, notifications, dislikes, comments, likes, email verification, password reset, public registration, drafts (`published`), slugs, role checks, pagination, search, refresh tokens, `helmet`.
+- Google OAuth, Passport, Cloudinary and multer, SVG uploads, image resizing, thumbnails, galleries, a media library, image deletion UI, orphan cleanup, followers, notifications, dislikes, comments, likes, email verification, password reset, public registration, drafts (`published`), slugs, role checks, pagination, search, refresh tokens, `helmet`.
 - MongoDB and Mongoose.
 
 Likes, comments and slugs can come later as small additions once the blog is live.
@@ -37,7 +38,7 @@ blog-project/
       db.js               # better-sqlite3 connection + schema bootstrap
       serialize.js        # DB row -> API shape (_id, categoryName, ...)
       middleware/auth.js  # verify JWT cookie, attach req.user
-      routes/             # posts.js, categories.js, user.js
+      routes/             # posts.js, categories.js, user.js, uploads.js
       scripts/createAdmin.js
       scripts/backup.js   # db.backup() to a dated file, keep last 14
     package.json
@@ -49,7 +50,7 @@ blog-project/
   PLAN.md                 # this file
 ```
 
-Stack: Node 20, Express 4, `better-sqlite3`, `bcryptjs`, `jsonwebtoken`, `cookie-parser`, `cors` (dev only, never loaded in production), `dotenv`. No ORM.
+Stack: Node 22, Express 4, `better-sqlite3`, `bcryptjs`, `jsonwebtoken`, `cookie-parser`, `cors` (dev only, never loaded in production), `dotenv`. No ORM.
 
 Schema (create in `db.js` with `CREATE TABLE IF NOT EXISTS`):
 
@@ -158,7 +159,7 @@ Done when: with backend and frontend both running locally, the owner can log in,
 ## Phase 4: Containerize
 
 Do:
-1. Multi-stage `Dockerfile` on **`node:20-slim`** for all stages (avoids Alpine build problems with `better-sqlite3`).
+1. Multi-stage `Dockerfile` on **`node:22-slim`** for all stages (avoids Alpine build problems with `better-sqlite3`).
    - Stage 1: `npm ci` and `npm run build` in `frontend/`.
    - Stage 2: install `backend-lite` production dependencies, copy the built frontend into `backend-lite/public`, `chown` `/app/data` to the `node` user, and run as `USER node`.
    - A Vite build on 2 GB RAM beside Caddy is tight. Either add swap on the droplet or build the image elsewhere (CI or the dev machine) and push it.
@@ -194,7 +195,7 @@ Only after the blog is live and has real posts:
 - Slugs (reject all-digit slugs so they never collide with numeric ids), RSS feed (`/rss.xml`), a sitemap, and basic SEO meta tags.
 - Likes (a `likes` count column plus a per-IP or per-session guard).
 - Comments with moderation.
-- Image uploads to a `/data/uploads` volume.
+- Orphaned-image cleanup script (list files in `data/uploads` not referenced by any post).
 - CI/CD with GitHub Actions: build the image, push, SSH to the droplet and `docker compose up -d`.
 - Uptime Kuma monitor on `/health`.
 
@@ -221,6 +222,8 @@ Field names: categories use `categoryName` and `categoryDescription`; posts use 
 | `POST /category/create` | yes | `{ categoryName, categoryDescription }` | 201 `{ status, message, categoryCreated }` |
 | `PUT /category/:id` | yes | `{ categoryName, categoryDescription }` | `{ status, message, categoryUpdated }` |
 | `DELETE /category/:id` | yes | none | `{ status, message, deletedCategory }` |
+| `POST /uploads` | yes | raw image bytes; `Content-Type` is one of `image/png`, `image/jpeg`, `image/gif`, `image/webp`; max 5 MB | 201 `{ status, message, url: "/uploads/<uuid>.<ext>", name }` |
+| `GET /uploads/:name` (not under `/api/v1`) | no | none | image bytes with `Cache-Control: public, max-age=31536000, immutable` and `X-Content-Type-Options: nosniff`; JSON 404 if missing |
 | `GET /health` (not under `/api/v1`) | no | none | `{ status: "ok" }` |
 
 Notes:
@@ -229,4 +232,28 @@ Notes:
 - `category` in post responses is the category `_id` string or null (verified: no frontend component reads it, so no populated object is needed).
 - Category responses include `postCount` (integer). `CategoryCard` is changed to read it in Phase 3.
 - No response ever includes `password_hash` or the JWT.
-- Status codes: 400 validation, 401 missing or invalid auth or bad credentials, 404 unknown id or route, 201 on create.
+- Uploads: type is checked by magic bytes, not the client header; the extension comes from the detected type; SVG and anything else is 415; over 5 MB is 413; an empty body is 415. Files are never deleted when posts are edited or deleted.
+- Status codes: 400 validation, 401 missing or invalid auth or bad credentials, 404 unknown id, route or upload, 413 body too large, 415 unsupported content type, 429 too many login attempts, 201 on create.
+
+---
+
+## Phase 7: Markdown editor and image uploads (owner request, supersedes the old "no uploads" scope)
+
+Design by the architect; no new frontend dependency and no `multer`.
+
+**Backend** (`backend-lite/`):
+1. `src/uploadDir.js` (shared helper): `UPLOAD_DIR` is `UPLOAD_DIR` env or `<DB dir>/uploads`, created at startup (a temp dir when `DB_PATH` is `:memory:`).
+2. `src/routes/uploads.js`: `POST /api/v1/uploads`, `requireAuth` first, then `express.raw({ type: [png, jpeg, gif, webp], limit: '5mb' })` on this route only. Sniff magic bytes (PNG, JPEG, GIF87a/89a, RIFF....WEBP); extension from the detected type; reject SVG and mismatches with 415. Name is `crypto.randomUUID()` plus extension, written with flag `wx`. Respond 201 with `{ status, message, url, name }`. Map `entity.too.large` to 413 `Image too large (max 5 MB)`.
+3. `app.js`: mount the router before the `/api` 404. Serve `/uploads` with `express.static(UPLOAD_DIR, { index: false, dotfiles: 'deny', redirect: false, fallthrough: false, maxAge: '365d', immutable: true })` plus `X-Content-Type-Options: nosniff` and `Content-Security-Policy: default-src 'none'; img-src 'self'; sandbox`. Mount it **before** the SPA fallback so a missing file is a JSON 404, not `index.html`.
+4. `.gitignore` covers `backend-lite/data` (check `uploads`). `.env.example`: optional `UPLOAD_DIR`. Optional `request_body { max_size 6MB }` in `Caddyfile.snippet`.
+5. `backup.js` stays DB-only. Docs: the backup unit is the whole `blog-data` volume: `backups/` plus `uploads/`, copy both off the droplet (rsync suits immutable files).
+
+**Frontend** (`frontend/`):
+1. `src/services/uploadsAPI.js`: `uploadImage(file)` posts the raw `File` with an explicit `Content-Type`; client pre-checks type and 5 MB.
+2. `src/components/posts/PostContent.jsx`: shared `Box` plus `ReactMarkdown` (no `rehype-raw`) with an `img` renderer (`loading="lazy"`, `maxWidth: 100%`, `height: auto`), used by `PostDetails` and the editor preview.
+3. `src/components/posts/MarkdownEditor.jsx`: MUI multiline `TextField` plus a toolbar (bold, italic, heading, bullet list, numbered list, quote, inline code, code block, link, image button), Write/Preview toggle (side by side on `md+`), paste and drag-drop upload. Insert `![Uploading name...]()` at the caret, then replace it with `![alt](/uploads/<name>)`; remove it and show an error on failure; disable Save while an upload is in flight.
+4. Wire into `CreatePost.jsx` and `EditPost.jsx` (keep "content required"), `PostDetails.jsx` (use `PostContent`), `PostCard.jsx` (excerpt drops `![...](...)` entirely), and add `/uploads` to the Vite proxy.
+
+**Security:** only the four image types by magic bytes; SVG rejected; random server-made names; `nosniff` and a sandbox CSP on `/uploads`; admin-only; 5 MB cap; no raw HTML rendering. Uploaded images are public by URL and keep their EXIF data (do not upload photos with location data). `docker compose down -v` deletes uploads along with the database.
+
+**Done when:** after login, the toolbar works on selections; paste, drag-drop and the image button each insert an image that shows in the preview and on the post page; `curl -I /uploads/<name>` shows `nosniff` and the cache headers; a missing upload is a JSON 404; SVG, a fake PNG and an oversize file are rejected; and uploads survive a container recreate.

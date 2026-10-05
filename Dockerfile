@@ -1,13 +1,13 @@
 # Stage 1: build the frontend
-FROM node:20-slim AS frontend
+FROM node:22-slim AS frontend
 WORKDIR /frontend
 COPY frontend/package*.json ./
 RUN npm ci
 COPY frontend/ ./
 RUN npm run build
 
-# Stage 2: backend runtime (node:20-slim, not Alpine, for better-sqlite3 prebuilds)
-FROM node:20-slim
+# Stage 2: backend runtime (node:22-slim, not Alpine, for better-sqlite3 prebuilds)
+FROM node:22-slim
 ENV NODE_ENV=production \
     DB_PATH=/app/data/blog.db \
     PORT=3000

@@ -1,10 +1,10 @@
 # Development
 
-Status (2026-10-05): backend commands run locally (Phase 1). Frontend scripts read from `frontend/package.json`; `npm run build` and `npm run lint` were run (build passes, lint does not, see below); `npm run dev` was not clicked through. Docker commands were run with a patched copy equivalent to the now-fixed Dockerfile; see [Docker](#docker-local).
+Status (2026-10-05): backend commands run locally (Phase 1). Frontend scripts read from `frontend/package.json`; `npm run build` passes, lint does not (see below); `npm run dev` was not clicked through. Docker commands were run with a patched copy equivalent to the now-fixed Dockerfile; see [Docker](#docker-local).
 
 ## Prerequisites
 
-- Node 20 or newer per `backend-lite/package.json`, but note `better-sqlite3@13.0.3` declares `node >=22` (npm warns `EBADENGINE` on Node 20). Ran locally on Node 26. Use Node 22 or newer to be safe.
+- Node 22 or newer (`engines.node` is `>=22` in `backend-lite/package.json`, matching `better-sqlite3@13.0.3`; the Docker image uses `node:22-slim`). Ran locally on Node 26.
 - No MongoDB needed.
 
 ## Backend (`backend-lite/`)
@@ -25,13 +25,15 @@ Create the admin (CLI args, or no args for an interactive prompt; password at le
 node src/scripts/createAdmin.js
 ```
 
-Run a backup (writes to `<DB dir>/backups`, keeps 14):
+Try an upload (after logging in with a cookie jar, see [api/overview.md](api/overview.md#post-uploads)). Images go to `backend-lite/data/uploads/`, which is git-ignored (`data` is in `backend-lite/.gitignore`; confirmed with `git check-ignore`).
+
+Run a backup (database only; writes to `<DB dir>/backups`, keeps 14):
 
 ```sh
 node src/scripts/backup.js
 ```
 
-The scripts load `.env` and open the database at `DB_PATH`; they do not need `JWT_SECRET`. They print a dotenv line such as `injected env (0) from .env`; it is harmless.
+The scripts load `.env` and open the database at `DB_PATH`; they do not need `JWT_SECRET`. A relative `DB_PATH` (and the `.env` file itself) is resolved against `backend-lite/`, not the current directory, so the server and the scripts open the same database wherever you run them from (seen: `DB_PATH=./data2/blog.db node backend-lite/src/scripts/createAdmin.js` run from the repo root created the file under `backend-lite/data2/`). Before this fix, an admin created from the repo root went into a different database and could not log in. They print a dotenv line such as `injected env (0) from .env`; it is harmless.
 
 ### Environment variables
 
@@ -41,13 +43,16 @@ From `backend-lite/.env.example`:
 |---|---|---|
 | `PORT` | Listen port | Default 3000. |
 | `JWT_SECRET` | Signs JWTs | Required in every environment (empty in the example file, so you must fill it). At least 32 characters when `NODE_ENV=production`. Generate with `openssl rand -hex 32`. Never commit real values. |
-| `DB_PATH` | SQLite file | Default `./data/blog.db`; the directory is created. `:memory:` is allowed by `db.js` (no persistence). |
+| `DB_PATH` | SQLite file | Default `./data/blog.db`, resolved against `backend-lite/`; the directory is created. `:memory:` is allowed by `db.js` (no persistence). |
+| `UPLOAD_DIR` | Where uploaded images are stored | Optional, commented out in the example. Default `uploads/` next to the DB file (`backend-lite/data/uploads` locally, `/app/data/uploads` in the container). A relative value resolves against `backend-lite/`. With `DB_PATH=:memory:` and no `UPLOAD_DIR`, a temp directory is used. |
 | `CLIENT_ORIGIN` | Allowed CORS origin in dev | `cors` is loaded only when `NODE_ENV` is not `production`. Example `http://localhost:5173`. |
 | `NODE_ENV` | `production` makes the cookie `Secure`, disables CORS, enforces the 32 character secret | The example file uses `development`. |
 
-No admin credentials belong in `.env`. Local `data/`, `*.db*` and `.env` are git-ignored in `backend-lite/.gitignore`.
+No admin credentials belong in `.env`. Local `data/` (database, backups, uploads), `*.db*` and `.env` are git-ignored in `backend-lite/.gitignore`.
 
 ## Frontend (`frontend/`)
+
+Phase 7 frontend (Markdown editor and image upload UI) is built; `npm run build` passes. The editor was not clicked through in a browser (see [writing-posts.md](writing-posts.md)).
 
 ```sh
 cd frontend
@@ -58,7 +63,7 @@ npm run lint       # eslint . (currently fails, see below)
 npm run preview
 ```
 
-Run the backend (`npm run dev` in `backend-lite/`, port 3000) in a second terminal. Vite proxies `/api` to `http://localhost:3000`, so the browser sees one origin and the cookie works without CORS. The frontend has no `.env` file by default.
+Run the backend (`npm run dev` in `backend-lite/`, port 3000) in a second terminal. Vite proxies `/api` and `/uploads` to `http://localhost:3000` (`vite.config.js`), so the browser sees one origin and the cookie works without CORS. The frontend has no `.env` file by default.
 
 | Variable | Purpose |
 |---|---|
@@ -68,8 +73,14 @@ Notes:
 
 - `axiosInstance` (`src/utils/axiosInstance.js`) is the only HTTP client; all calls go through `src/services/*.js`. It sends cookies (`withCredentials`) and logs the UI out on any 401.
 - `@emotion/react` and `@emotion/styled` were added to `package.json` because the build failed without them (MUI needs them).
-- Lint: `npm run lint` reported 35 errors and 1 warning when run on 2026-10-05 (mostly `react/prop-types`, one unused `React` import, one fast-refresh warning in `AuthContext.jsx`). The build does not depend on lint.
-- Not clicked through in a browser: Markdown rendering, 404 page, route redirects, logout button, reload persistence, the 429 message, the mobile menu.
+- Editor files in `src/components/posts/`:
+  - `MarkdownEditor.jsx`: custom component (no new editor dependency; MUI and `react-markdown` were already used; `remark-gfm` ^4.0.1 was added for tables, strikethrough, task lists and autolinks). Props `value`, `onChange`, `onBusyChange`, `disabled`. Toolbar, Write/Preview toggle (below `md`) or side by side (`md` and up), paste and drag-drop upload.
+  - `markdownActions.js`: pure text transforms (`bold`, `italic`, `heading`, lists, `quote`, `inlineCode`, `codeBlock`, `link`, `insertAt`, `uploadingToken`, `replaceToken`, `safeAlt`). No React, so it can be checked in Node.
+  - `PostContent.jsx`: the one Markdown renderer, used by the editor preview and `PostDetails`. No `rehype-raw`; images are lazy and capped to the column width.
+  - `CreatePost.jsx` and `EditPost.jsx` use the editor and disable Save while it reports a pending upload. `PostCard.jsx` drops image Markdown from the list excerpt.
+  - `src/services/uploadsAPI.js`: `uploadImage(file)` posts the raw `File` to `/uploads` with its own `Content-Type`; checks type and 5 MB first.
+- Lint: `npm run lint` (`npx eslint src`) reported 35 errors and 1 warning on 2026-10-05 before Phase 7, and 42 errors after it, per the developer (not re-run by the docs pass). They are `react/prop-types` and unused `React` imports; the build does not depend on lint.
+- Not clicked through in a browser: Markdown rendering, 404 page, route redirects, logout button, reload persistence, the 429 message, the mobile menu, and everything in the editor (toolbar, selection restore, paste, drag-drop, image picker, preview and layout, Save disabled during upload, images on the post page).
 
 ## Docker (local)
 
@@ -96,11 +107,12 @@ Phase 2 is skipped for now. `backend-lite/package.json` has no `test` script, so
 ```
 src/index.js               starts the app on PORT
 src/app.js                 express app, middleware order, error handler, /health
-src/db.js                  better-sqlite3 connection, pragmas, schema, SIGTERM close
+src/db.js                  better-sqlite3 connection, pragmas, schema, SIGTERM close; resolves DB_PATH and .env against backend-lite/
+src/uploadDir.js           resolves and creates the uploads directory
 src/serialize.js           DB row to API shape (_id, categoryName, ...)
 src/middleware/auth.js     requireAuth, cookie helpers, fail(status, message)
 src/middleware/http.js     requireJson (415), parseId (positive integer or null)
-src/routes/                user.js (login, logout, profile, rate limit), posts.js, categories.js
+src/routes/                user.js (login, logout, profile, rate limit), posts.js, categories.js, uploads.js (raw image upload)
 src/scripts/               createAdmin.js, backup.js
 ```
 
@@ -108,7 +120,8 @@ Other top-level items:
 
 ```
 frontend/                  React app (Vite). src/App.jsx routes, src/context/AuthContext.jsx,
-                           src/utils/axiosInstance.js, src/services/*API.js, src/components/{auth,posts,categories,navbar,home}
+                           src/utils/axiosInstance.js, src/services/*API.js (incl. uploadsAPI.js), src/components/{auth,posts,categories,navbar,home}
+                           posts/ holds MarkdownEditor.jsx, markdownActions.js, PostContent.jsx
 Dockerfile                 stage 1 builds frontend, stage 2 runs backend-lite with the build in public/
 docker-compose.yml         service `blog`, volume `blog-data`, external Caddy network
 docker-compose.dev.yml     local override: publishes 127.0.0.1:3000

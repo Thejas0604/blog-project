@@ -17,6 +17,7 @@ import { styled } from "@mui/material/styles";
 import { useNavigate } from "react-router-dom";
 import { createPost } from "../../services/postsAPI";
 import { getAllCategories } from "../../services/categoryAPI";
+import MarkdownEditor from "./MarkdownEditor";
 
 const StyledCard = styled(Card)(({ theme }) => ({
     padding: theme.spacing(4),
@@ -29,6 +30,7 @@ const CreatePost = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState(false);
+    const [uploading, setUploading] = useState(false);
     const [categories, setCategories] = useState([]);
     const [formData, setFormData] = useState({
         title: "",
@@ -61,6 +63,11 @@ const CreatePost = () => {
         e.preventDefault();
         setError("");
         setSuccess(false);
+
+        if (uploading) {
+            setError("Please wait for the image upload to finish");
+            return;
+        }
 
         // Validation
         if (!formData.title || !formData.content || !formData.category) {
@@ -124,16 +131,10 @@ const CreatePost = () => {
                         disabled={loading}
                     />
 
-                    <TextField
-                        fullWidth
-                        label="Content (Markdown)"
-                        name="content"
+                    <MarkdownEditor
                         value={formData.content}
-                        onChange={handleChange}
-                        margin="normal"
-                        required
-                        multiline
-                        rows={6}
+                        onChange={(content) => setFormData((prev) => ({ ...prev, content }))}
+                        onBusyChange={setUploading}
                         disabled={loading}
                     />
 
@@ -159,7 +160,7 @@ const CreatePost = () => {
                             type="submit"
                             variant="contained"
                             fullWidth
-                            disabled={loading}
+                            disabled={loading || uploading}
                         >
                             {loading ? <CircularProgress size={24} /> : "Create Post"}
                         </Button>

@@ -1,6 +1,6 @@
 # API overview
 
-Verified against `backend-lite/src` and by running every endpoint with `curl` against a throwaway database (2026-10-05). The Mongo-era API (`/categories`, `/user/register`, FormData uploads, email login) is gone; none of it exists in the lite build.
+Verified against `backend-lite/src` and by running every endpoint with `curl` against a throwaway database (2026-10-05). The Mongo-era API (`/categories`, `/user/register`, FormData uploads, email login) is gone; none of it exists in the lite build. The only upload is the raw-body admin image upload described under [Uploads](#uploads).
 
 Base: `/api/v1`. IDs are `_id` strings of integers. Success responses have `status: "success"`; errors are `{ "status": "fail", "message": "..." }`.
 
@@ -27,6 +27,8 @@ BASE=http://localhost:3000/api/v1
 | `POST /category/create` | yes | 201 |
 | `PUT /category/:id` | yes | 200 |
 | `DELETE /category/:id` | yes | 200 with the deleted object in the body |
+| `POST /uploads` | yes | 201, raw image body |
+| `GET /uploads/:name` (outside `/api/v1`) | no | 200 image bytes |
 | `GET /health` (outside `/api/v1`) | no | 200 `{ "status": "ok" }` |
 
 Paths are literal: `/category` is singular; creates are `/posts/create` and `/category/create`. There is no register route.
@@ -41,7 +43,7 @@ Paths are literal: `/category` is singular; creates are `/posts/create` and `/ca
 | Ids in URLs | Must be 1 to 15 digits and greater than 0. Anything else (`abc`, `0`, `-1`) or an unknown id is 404 (`Post not found` / `Category not found`), never 500. |
 | Unknown route | JSON 404 `{"status":"fail","message":"Not found"}` for any unknown `/api/...` path. When the built frontend is present (`public/index.html`, as in the Docker image), other `GET` paths return `index.html` (SPA fallback); other methods still get the JSON 404. Without the built frontend (local backend dev) every unknown path is the JSON 404. |
 | Malformed JSON | 400 `Invalid JSON body`. |
-| Body size | Over 100 KB: 413 `request entity too large`. |
+| Body size | Over 100 KB: 413 `request entity too large` (JSON routes). `POST /uploads` has its own 5 MB limit. |
 | Server error | 500 `Internal server error` (details only in the server log). |
 | Login rate limit | See [POST /user/login](#post-userlogin). |
 
@@ -191,6 +193,50 @@ Auth required. Response: `status`, `message` (`Category deleted`), `deletedCateg
 ```sh
 curl -b jar.txt -X DELETE $BASE/category/1
 ```
+
+## Uploads
+
+Added in Phase 7. The editor UI that calls this is described in [../writing-posts.md](../writing-posts.md) (not clicked through in a browser). Verified with `curl` against a throwaway database and upload directory (2026-10-05).
+
+### POST /uploads
+
+Auth required (`/api/v1/uploads`). The body is the raw image bytes, not JSON and not multipart. `Content-Type` must be one of `image/png`, `image/jpeg`, `image/gif`, `image/webp`; maximum 5 MB. The server also checks the magic bytes (PNG, JPEG, GIF87a/GIF89a, RIFF...WEBP), and they must match the declared `Content-Type`. The stored name is a random UUID plus an extension from the detected type (`.png`, `.jpg`, `.gif`, `.webp`); the client's filename is never used.
+
+Response keys: `status`, `message` (`Image uploaded`), `url` (`/uploads/<uuid>.<ext>`), `name`.
+
+Codes (checked in this order: auth, then body size and type, then content):
+- 201 stored.
+- 401 `Not authenticated`. Auth runs before the body is read; an unauthenticated 6 MB upload got 401.
+- 413 `Image too large (max 5 MB)`.
+- 415 for any of: a `Content-Type` that is not one of the four (including `image/svg+xml` and `application/json`; message `Upload a PNG, JPEG, GIF or WebP image as the raw request body`), an empty body (same message), or bytes that are not a real image of the declared type (SVG sent as `image/png`, or PNG bytes sent as `image/jpeg`; message `File content does not match an allowed image type`). SVG is always rejected.
+
+```sh
+curl -b jar.txt -X POST -H 'Content-Type: image/png' \
+  --data-binary @photo.png $BASE/uploads
+```
+
+```json
+{"status":"success","message":"Image uploaded","url":"/uploads/<uuid>.png","name":"<uuid>.png"}
+```
+
+Use `--data-binary` (not `-d`, which mangles binary data). Put `![alt](/uploads/<uuid>.png)` in a post's Markdown to show the image.
+
+### GET /uploads/:name
+
+No auth: uploaded images are public to anyone who has the URL. Not under `/api/v1`.
+
+- 200: the image bytes, with `Content-Type` from the file extension and these headers:
+  - `Cache-Control: public, max-age=31536000, immutable`
+  - `X-Content-Type-Options: nosniff`
+  - `Content-Security-Policy: default-src 'none'; img-src 'self'; sandbox`
+- 404 JSON `{"status":"fail","message":"Not found"}` for a missing file (not `index.html`), and for `/uploads/` itself (no directory listing). The same `nosniff` and CSP headers are on the 404.
+- Other seen results: a `../` path (sent with `--path-as-is`) returned 403 `Forbidden`; `POST /uploads/x.png` returned 405.
+
+```sh
+curl -I http://localhost:3000/uploads/<uuid>.png
+```
+
+Files are never modified or deleted by the API (there is no delete endpoint), so a long cache lifetime is safe. Images keep their EXIF data (such as GPS location); the server does not strip it.
 
 ## Health
 

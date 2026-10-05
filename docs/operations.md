@@ -2,7 +2,9 @@
 
 Run from the project directory on the droplet. First-time setup: [deploy.md](deploy.md).
 
-Verification status (2026-10-05): the Node scripts and server behavior were run locally against a throwaway database (Phase 1). The container commands below were run on Docker Desktop (Compose v5.5.1) using the repo's compose files with a patched copy of the Dockerfile equivalent to the committed one (`--ignore-scripts`). The committed Dockerfile now builds (confirmed by the lead; not re-run by the docs pass). See [milestones.md](milestones.md#phase-4-containerize). Commands that were not run are marked "unverified". The droplet itself (Caddy, cron) is Phase 5 and not done.
+Verification status (2026-10-05): the Node scripts and server behavior were run locally against a throwaway database (Phase 1). The container commands below were run on Docker Desktop (Compose v5.5.1) with a patched copy of the Dockerfile; the developer then re-ran the main checks on the committed `node:22-slim` Dockerfile (Docker 29.8.1, dev override: build, `/health`, `createAdmin`, login cookie, upload and fetch, backup, data surviving `down` then `up -d`; reported, not re-run by the docs pass). See [milestones.md](milestones.md#phase-4-containerize). Commands that were not run are marked "unverified". The droplet itself (Caddy, cron) is Phase 5 and not done.
+
+Uploads (Phase 7, backend): verified locally with `curl`; in a container the developer saw a PNG upload, fetch and persistence across `down` then `up -d`. Linux and Caddy: unverified.
 
 Compose reads `.env` in the project root (copy the root `.env.example`, not `backend-lite/.env.example`). On the droplet the commands are plain `docker compose ...`. For a local test add `-f docker-compose.yml -f docker-compose.dev.yml` (see [development.md](development.md#docker-local)).
 
@@ -16,7 +18,7 @@ git pull && docker compose up -d --build   # update
 docker compose ps
 ```
 
-Run on a laptop: `up -d --build`, `ps` (Up, port bound), recreate (`up -d --force-recreate`) and data persistence were seen to work. `stop`, `restart`, `git pull` and the update flow were not run (unverified). `docker compose down` (without `-v`) keeps the `blog-data` volume; `down -v` deletes the database, so never use `-v` on the server.
+Run on a laptop: `up -d --build`, `ps` (Up, port bound), recreate (`up -d --force-recreate`) and data persistence were seen to work. `stop`, `restart`, `git pull` and the update flow were not run (unverified). `docker compose down` (without `-v`) keeps the `blog-data` volume; `down -v` deletes the whole volume: the database, the backups and every uploaded image. Never use `-v` on the server.
 
 Note: building the frontend on a 2 GB droplet is tight; add swap or build elsewhere (PLAN.md Phase 4; not tried).
 
@@ -34,6 +36,8 @@ curl -s https://blog.<domain>/health         # expected: {"status":"ok"}
 Log content (seen in a container): startup prints `BlogMe Lite listening on port <PORT>`; unexpected 500 errors print the stack. Failed logins and 4xx errors are not logged. Scripts also print a dotenv line such as `injected env (0) from .env`; it is harmless.
 
 ## Admin
+
+Scripts and the server open the same database from any directory: a relative `DB_PATH` (and the `.env` file) is resolved against `backend-lite/`, not the current directory (seen: with `DB_PATH=./data2/blog.db`, running `createAdmin.js` from the repo root created `backend-lite/data2/`, not `./data2/`). In the container `DB_PATH` is absolute, so this only matters for local runs. Earlier builds resolved it against the current directory, which produced the symptom "admin created but cannot log in" (see [troubleshooting](#troubleshooting)).
 
 Create (verified locally; interactive, password at least 12 characters, never stored in `.env`):
 
@@ -87,7 +91,26 @@ docker compose exec -T blog node src/scripts/backup.js
 
 Behavior (verified locally): uses better-sqlite3 `db.backup()`, which is safe on a live WAL database. It writes `blog-YYYYMMDD-HHMMSS.db` (UTC) into a `backups` folder next to the database file, i.e. `<DB dir>/backups`. In the container (`DB_PATH=/app/data/blog.db`) it wrote `/app/data/backups/blog-<stamp>.db`, inside the `blog-data` volume (seen). The image has no `sqlite3` CLI (checked); use the Node commands in this file. It prints `Backup written: <path>`, then deletes all but the newest 14 files matching `blog-*.db` (sorted by name). Exit code 1 and the error message if the backup fails. Two backups within the same second would collide on the name; cron does not do that.
 
-Note: the backups live on the same volume and disk as the database. They protect against corruption and mistakes, not against losing the droplet. Copy them off the machine (see [deploy.md](deploy.md#nightly-backup-cron)).
+`backup.js` backs up the database only. It does not copy `uploads/`.
+
+**The backup unit is the whole `blog-data` volume**: `blog.db`, `backups/` (database snapshots) and `uploads/` (images), all under `/app/data` in the container. Copy both `backups/` and `uploads/` off the droplet. Uploaded files are immutable (random names, never overwritten), so `rsync` only transfers new ones. The backups live on the same volume and disk as the database; they protect against corruption and mistakes, not against losing the droplet (see [deploy.md](deploy.md#nightly-backup-cron)).
+
+Copy off the droplet (unverified; the `docker compose cp` form was not run for `uploads/`):
+
+```sh
+# one-off, from your laptop, via docker compose cp on the droplet
+docker compose cp blog:/app/data/uploads ./uploads-copy
+docker compose cp blog:/app/data/backups ./backups-copy
+# repeated: rsync from a host path of the volume (find it with: docker volume inspect <project>_blog-data)
+rsync -a --ignore-existing <droplet>:<volume mountpoint>/uploads/ ./uploads-copy/
+```
+
+Size check: `docker compose exec blog sh -c 'du -sh /app/data/uploads /app/data/backups'`.
+
+Things to know about uploads:
+
+- Orphans are never deleted: an image stays on disk after the post that used it is edited or deleted, or if an upload was abandoned. There is no cleanup script (a possible later addition).
+- Images are public to anyone who has the URL (`/uploads/<uuid>.<ext>`), and the server keeps EXIF data such as GPS location. Strip it before uploading photos.
 
 Verify a backup: list the folder, then open the newest file read-only and run an integrity check (run locally; output was `ok`):
 
@@ -103,7 +126,8 @@ Expected: a post count and `[ { integrity_check: 'ok' } ]`. A backup copied out 
 
 1. `docker compose stop blog`
 2. Copy the chosen backup over `blog.db` in the `blog-data` volume, and delete `blog.db-wal` and `blog.db-shm` next to it (stale WAL files must not be replayed onto the restored file).
-3. `docker compose start blog`, then check `/health` and `GET /api/v1/posts`.
+3. Restore `uploads/` into the volume too (if the volume was lost). Files must be owned by the container user `node` (uid 1000), or new uploads and reads can fail with permission errors. Example with a throwaway container (unverified): `docker run --rm -v <project>_blog-data:/data -v "$PWD/uploads-copy":/src:ro node:22-slim sh -c 'mkdir -p /data/uploads && cp -a /src/. /data/uploads/ && chown -R node:node /data/uploads'`. Use `docker volume ls` for the real volume name.
+4. `docker compose start blog`, then check `/health`, `GET /api/v1/posts`, and `curl -I https://blog.<domain>/uploads/<name>` for one known image (expect 200 and `nosniff`).
 
 Exact container commands are not verified yet; rehearse once with the test restore in [deploy.md](deploy.md#test-restore).
 
@@ -114,7 +138,7 @@ df -h
 docker system df
 docker stats --no-stream
 free -h
-du -sh <DB dir> <DB dir>/backups
+du -sh <DB dir> <DB dir>/backups <DB dir>/uploads   # in the container: /app/data, /app/data/backups, /app/data/uploads
 ```
 
 The compose file sets `mem_limit: 300m`. In a test container `docker stats --no-stream` showed about 20 MiB used of 300 MiB while idle.
@@ -136,6 +160,11 @@ The compose file sets `mem_limit: 300m`. In a test container `docker stats --no-
 | 429 `Too many attempts` on login | 10 failed logins from the same IP in 15 minutes | Wait for the window to end, or restart the container (counter is in memory). If it is you behind Caddy, check `trust proxy` sees real client IPs. |
 | 415 `Content-Type must be application/json` | Client sent a non-JSON body | Send `Content-Type: application/json`. |
 | 413 `request entity too large` | Body over 100 KB | Shorten the post. |
+| Upload returns 413 `Image too large (max 5 MB)` | File over 5 MB (or Caddy `request_body max_size 6MB`, if configured, rejecting it first; the Caddy line was not run) | Resize or compress the image. |
+| Upload returns 415 | Not PNG, JPEG, GIF or WebP (SVG is always rejected), the `Content-Type` does not match the file's real bytes, or an empty body | Send the right `Content-Type` and a real image; with `curl` use `--data-binary @file`. See [api/overview.md](api/overview.md#post-uploads). |
+| `/uploads/<name>` returns JSON 404 | File not in the uploads directory (typo, volume replaced, restored without `uploads/`) | `docker compose exec blog ls /app/data/uploads`; restore the files. |
+| Admin created but cannot log in (401 `Invalid credentials`) | The script wrote to a different database than the server uses. Older builds resolved a relative `DB_PATH` against the current directory, so running from the repo root created `./data/blog.db` there | Fixed in the code: a relative `DB_PATH` and `.env` now resolve against `backend-lite/`, so any directory gives the same DB. If you still have a stray `data/` folder in the repo root from before, delete it (after checking it holds nothing you need), then run `createAdmin.js` again. Check which file is in use with `ls backend-lite/data`. |
+| Images disappeared after a rebuild | `docker compose down -v` (or `docker volume rm`) deleted `blog-data`, which holds `uploads/` | Restore `uploads/` from the off-droplet copy. Never use `-v`. |
 | 404 JSON on `/api/...` | Wrong path (`/category` is singular; creates are `/posts/create`) | Check [api/overview.md](api/overview.md). |
 | Build killed (OOM) | 2 GB droplet | Add swap or build elsewhere. |
 | `createAdmin.js` says "An admin already exists" | Admin was already created | Use the [reset procedure](#reset-the-admin-password). |

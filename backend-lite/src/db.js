@@ -1,9 +1,14 @@
-require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
+const ROOT = path.join(__dirname, '..');
+require('dotenv').config({ path: path.join(ROOT, '.env') });
 const Database = require('better-sqlite3');
 
-const DB_PATH = process.env.DB_PATH || './data/blog.db';
+// Relative DB_PATH is resolved against backend-lite/, not the current directory,
+// so the server and the scripts always open the same file.
+const DB_PATH = process.env.DB_PATH === ':memory:'
+  ? ':memory:'
+  : path.resolve(ROOT, process.env.DB_PATH || './data/blog.db');
 
 if (DB_PATH !== ':memory:') {
   fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
