@@ -1,47 +1,19 @@
-import axios from "axios";
-const base_URL = "http://localhost:3000/api/v1/user";
+import axiosInstance from "../utils/axiosInstance";
 
-export const registerAPI = async (userData) => {
-    const response = await axios.post(
-        `${base_URL}/register`,
-        {
-            username: userData?.username,
-            email: userData?.email,
-            password: userData?.password,
-        },
-        { withCredentials: true }
-    );
+export const loginAPI = async (userData) => {
+    const response = await axiosInstance.post("/user/login", {
+        username: userData?.username,
+        password: userData?.password,
+    });
+    return response;
+};
+
+export const logoutAPI = async () => {
+    const response = await axiosInstance.post("/user/logout");
     return response.data;
 };
 
-export const loginAPI = async (userData) => {
-    try {
-        const response = await axios.post(
-            `${base_URL}/login`,
-            {
-                username: userData?.username,
-                password: userData?.password,
-            },
-            { withCredentials: true }
-        );
-        return response;
-    } catch (error) {
-        throw error;
-    }
+export const getProfileAPI = async () => {
+    const response = await axiosInstance.get("/user/profile");
+    return response.data;
 };
-
-// export const checkAuthStatus = async (userData) => {
-//     const response = await axios.get(`${base_URL}/checkAuthenticated`, {
-//         withCredentials: true,
-//     });
-//     return response.data;
-// };
-
-// export const logoutAPI = async (userData) => {
-//     const response = await axios.post(
-//         `${base_URL}/logout`,
-//         {},
-//         { withCredentials: true }
-//     );
-//     return response.data;
-// };

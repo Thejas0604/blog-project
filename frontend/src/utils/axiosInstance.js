@@ -1,22 +1,22 @@
 import axios from "axios";
 
-const base_URL = "http://localhost:3000/api/v1";
-
-// Bearer token for configuring the headers
 const axiosInstance = axios.create({
-    baseURL: base_URL,
+    baseURL: (import.meta.env.VITE_API_URL ?? "") + "/api/v1",
     withCredentials: true,
 });
 
-axiosInstance.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem('token'); 
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`; 
-        }
-        return config;
-    },
+// AuthContext registers a callback so a 401 clears the logged-in state.
+let onUnauthorized = null;
+export const setUnauthorizedHandler = (fn) => {
+    onUnauthorized = fn;
+};
+
+axiosInstance.interceptors.response.use(
+    (response) => response,
     (error) => {
+        if (error.response?.status === 401 && onUnauthorized) {
+            onUnauthorized();
+        }
         return Promise.reject(error);
     }
 );

@@ -1,18 +1,17 @@
 import React, { useEffect, useState, useContext } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getPostById, likePost, deletePost } from "../../services/postsAPI";
+import { getPostById, deletePost } from "../../services/postsAPI";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
-import CardMedia from "@mui/material/CardMedia";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
-import CardActionArea from "@mui/material/CardActionArea";
 import CardActions from "@mui/material/CardActions";
 import Container from "@mui/material/Container";
-import { CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Box } from "@mui/material";
-import FavoriteIcon from "@mui/icons-material/Favorite";
+import { CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Box } from "@mui/material";
+import ReactMarkdown from "react-markdown";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import { getCategoryById } from "../../services/categoryAPI";
 import { AuthContext } from "../../context/AuthContext";
 
 export const PostDetails = () => {
@@ -21,7 +20,7 @@ export const PostDetails = () => {
     const { user } = useContext(AuthContext);
     const [post, setPost] = useState(null);
     const [error, setError] = useState(null);
-    const [liking, setLiking] = useState(false);
+    const [categoryName, setCategoryName] = useState("");
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [deleting, setDeleting] = useState(false);
 
@@ -30,34 +29,17 @@ export const PostDetails = () => {
             try {
                 const fetchedPost = await getPostById(id);
                 setPost(fetchedPost);
+                const catId = fetchedPost.postFound.category;
+                if (catId) {
+                    const cat = await getCategoryById(catId);
+                    setCategoryName(cat.categoryFound.categoryName);
+                }
             } catch (err) {
                 setError(err.message);
             }
         };
         fetchPost();
     }, [id]);
-
-    const handleLike = async () => {
-        if (!user) {
-            navigate("/login");
-            return;
-        }
-        setLiking(true);
-        try {
-            const response = await likePost(id);
-            setPost((prev) => ({
-                ...prev,
-                postFound: {
-                    ...prev.postFound,
-                    likes: response.postFound.likes,
-                },
-            }));
-        } catch (err) {
-            console.error("Error liking post:", err);
-        } finally {
-            setLiking(false);
-        }
-    };
 
     const handleEdit = () => {
         navigate(`/edit-post/${id}`);
@@ -107,44 +89,27 @@ export const PostDetails = () => {
                     borderRadius: "10px",
                 }}
             >
-                <CardActionArea>
-                    <CardMedia
-                        component="img"
+                <CardContent>
+                    <Typography gutterBottom variant="h4" component="h1">
+                        {post.postFound.title}
+                    </Typography>
+                    <Typography
+                        variant="caption"
+                        sx={{ color: "text.secondary", display: "block", mb: 2 }}
+                    >
+                        {categoryName ? `${categoryName} | ` : ""}
+                        {new Date(post.postFound.createdAt).toLocaleDateString()}
+                    </Typography>
+                    <Box
                         sx={{
-                            height: "auto",
-                            maxHeight: 500,
-                            objectFit: "contain",
+                            "& img": { maxWidth: "100%" },
+                            "& pre": { overflowX: "auto" },
                         }}
-                        image={post.postFound.postImage.path}
-                        alt="Post Image"
-                    />
-                    <CardContent>
-                        <Typography gutterBottom variant="h5" component="div">
-                            {post.postFound.title}
-                        </Typography>
-                        <Typography
-                            variant="body2"
-                            sx={{
-                                color: "text.secondary",
-                            }}
-                        >
-                            {post.postFound.content}
-                        </Typography>
-                    </CardContent>
-                </CardActionArea>
-                <CardActions sx={{ justifyContent: "space-between", px: 2 }}>
-                    <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-                        <IconButton
-                            color="primary"
-                            onClick={handleLike}
-                            disabled={liking || !user}
-                        >
-                            <FavoriteIcon />
-                        </IconButton>
-                        <Typography variant="body2">
-                            {post.postFound.likes || 0} likes
-                        </Typography>
+                    >
+                        <ReactMarkdown>{post.postFound.content}</ReactMarkdown>
                     </Box>
+                </CardContent>
+                <CardActions sx={{ justifyContent: "flex-end", px: 2 }}>
                     {user && (
                         <Box sx={{ display: "flex", gap: 1 }}>
                             <Button

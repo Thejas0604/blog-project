@@ -1,6 +1,6 @@
 import axiosInstance from "../utils/axiosInstance";
 
-const base_URL = "http://localhost:3000/api/v1/category";
+const base_URL = "/category";
 
 //create category (admin only)
 export const createCategory = async (categoryData) => {
@@ -10,9 +10,6 @@ export const createCategory = async (categoryData) => {
             categoryName: categoryData.categoryName,
             categoryDescription: categoryData.categoryDescription,
         },
-        {
-            withCredentials: true,
-        }
     );
     return response.data;
 };
@@ -37,17 +34,12 @@ export const updateCategory = async (categoryId, categoryData) => {
             categoryName: categoryData.categoryName,
             categoryDescription: categoryData.categoryDescription,
         },
-        {
-            withCredentials: true,
-        }
     );
     return response.data;
 };
 
 //delete category (admin only)
 export const deleteCategory = async (categoryId) => {
-    const response = await axiosInstance.delete(`${base_URL}/${categoryId}`, {
-        withCredentials: true,
-    });
+    const response = await axiosInstance.delete(`${base_URL}/${categoryId}`);
     return response.data;
 };

@@ -2,25 +2,18 @@ import * as React from "react";
 import { useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Checkbox from "@mui/material/Checkbox";
 import CssBaseline from "@mui/material/CssBaseline";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import Divider from "@mui/material/Divider";
 import FormLabel from "@mui/material/FormLabel";
 import FormControl from "@mui/material/FormControl";
-import Link from "@mui/material/Link";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import Stack from "@mui/material/Stack";
 import MuiCard from "@mui/material/Card";
 import { styled } from "@mui/material/styles";
-import ForgotPassword from "./ForgotPassword";
 import { loginAPI } from "../../services/authAPI";
 import { useNavigate } from "react-router-dom";
 import CircularProgress from "@mui/material/CircularProgress";
 import { AuthContext } from "../../context/AuthContext";
-
-//import { GoogleIcon, FacebookIcon, SitemarkIcon } from './CustomIcons';
 
 const Card = styled(MuiCard)(({ theme }) => ({
     display: "flex",
@@ -69,18 +62,9 @@ export default function Login() {
     const [usernameErrorMessage, setUsernameErrorMessage] = React.useState("");
     const [passwordError, setPasswordError] = React.useState(false);
     const [passwordErrorMessage, setPasswordErrorMessage] = React.useState("");
-    const [open, setOpen] = React.useState(false);
     const [loading, setLoading] = useState(false);
     const [loginError, setLoginError] = useState("");
-    const { user, dispatch } = React.useContext(AuthContext);
-
-    const handleClickOpen = () => {
-        setOpen(true);
-    };
-
-    const handleClose = () => {
-        setOpen(false);
-    };
+    const { dispatch } = React.useContext(AuthContext);
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -93,15 +77,17 @@ export default function Login() {
                     password: data.get("password"),
                 });
                 if (response?.status === 200) {
-                    dispatch({ type: "LOGIN", payload: response.data.token });
-                    localStorage.setItem("token", response.data.token);
+                    dispatch({ type: "LOGIN", payload: response.data.user });
                     navigate("/list");
-                    //console.log(user);
                 } else {
                     setLoginError("Invalid username or password.");
                 }
             } catch (error) {
-                setLoginError("Invalid username or password.");
+                setLoginError(
+                    error.response?.status === 429
+                        ? "Too many attempts. Try again later."
+                        : "Invalid username or password."
+                );
             } finally {
                 setLoading(false);
             }
@@ -140,7 +126,6 @@ export default function Login() {
     return (
         <LoginContainer direction="column" justifyContent="space-between">
             <Card variant="outlined">
-                {/* <SitemarkIcon /> */}
                 <Typography
                     component="h1"
                     variant="h4"
@@ -182,22 +167,7 @@ export default function Login() {
                         />
                     </FormControl>
                     <FormControl>
-                        <Box
-                            sx={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                            }}
-                        >
-                            <FormLabel htmlFor="password">Password</FormLabel>
-                            <Link
-                                component="button"
-                                onClick={handleClickOpen}
-                                variant="body2"
-                                sx={{ alignSelf: "baseline" }}
-                            >
-                                Forgot your password?
-                            </Link>
-                        </Box>
+                        <FormLabel htmlFor="password">Password</FormLabel>
                         <CustomTextField
                             error={passwordError}
                             helperText={passwordErrorMessage}
@@ -213,16 +183,11 @@ export default function Login() {
                             color={passwordError ? "error" : "primary"}
                         />
                     </FormControl>
-                    <FormControlLabel
-                        control={<Checkbox value="remember" color="primary" />}
-                        label="Remember me"
-                    />
                     {loginError && (
                         <Typography color="error" sx={{ textAlign: "center" }}>
                             {loginError}
                         </Typography>
                     )}
-                    <ForgotPassword open={open} handleClose={handleClose} />
                     <Button
                         type="submit"
                         fullWidth
@@ -231,36 +196,7 @@ export default function Login() {
                     >
                         {loading ? <CircularProgress size={24} /> : "Login"}
                     </Button>
-                    <Typography sx={{ textAlign: "center" }}>
-                        Don&apos;t have an account?{" "}
-                        <span>
-                            <Link href="/register" sx={{ alignSelf: "center" }}>
-                                Sign up
-                            </Link>
-                        </span>
-                    </Typography>
                 </Box>
-                {/* <Divider>or</Divider>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Button
-              type="submit"
-              fullWidth
-              variant="outlined"
-              onClick={() => alert('Loginwith Google')}
-              startIcon={<GoogleIcon />}
-            >
-              Login with Google
-            </Button>
-            <Button
-              type="submit"
-              fullWidth
-              variant="outlined"
-              onClick={() => alert('Login with Facebook')}
-              startIcon={<FacebookIcon />}
-            >
-              Login with Facebook
-            </Button>
-          </Box> */}
             </Card>
         </LoginContainer>
     );

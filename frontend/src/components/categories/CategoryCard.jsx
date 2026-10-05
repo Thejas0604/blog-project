@@ -36,7 +36,7 @@ const CategoryCard = ({ category, onDelete, isAdmin }) => {
                     {category.categoryDescription || "No description"}
                 </Typography>
                 <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: "block" }}>
-                    {category.posts?.length || 0} posts
+                    {category.postCount || 0} posts
                 </Typography>
             </CardContent>
             {isAdmin && (

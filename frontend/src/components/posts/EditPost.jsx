@@ -4,6 +4,10 @@ import {
     Button,
     TextField,
     Typography,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
     Container,
     Card,
     CircularProgress,
@@ -12,6 +16,7 @@ import {
 import { styled } from "@mui/material/styles";
 import { useNavigate, useParams } from "react-router-dom";
 import { getPostById, updatePost } from "../../services/postsAPI";
+import { getAllCategories } from "../../services/categoryAPI";
 
 const StyledCard = styled(Card)(({ theme }) => ({
     padding: theme.spacing(4),
@@ -26,18 +31,25 @@ const EditPost = () => {
     const [fetchLoading, setFetchLoading] = useState(true);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState(false);
+    const [categories, setCategories] = useState([]);
     const [formData, setFormData] = useState({
         title: "",
         content: "",
+        category: "",
     });
 
     useEffect(() => {
         const fetchPost = async () => {
             try {
-                const response = await getPostById(id);
+                const [response, cats] = await Promise.all([
+                    getPostById(id),
+                    getAllCategories(),
+                ]);
+                setCategories(cats.categories || []);
                 setFormData({
                     title: response.postFound.title,
                     content: response.postFound.content,
+                    category: response.postFound.category || "",
                 });
                 setFetchLoading(false);
             } catch (err) {
@@ -73,7 +85,8 @@ const EditPost = () => {
             await updatePost({
                 postId: id,
                 title: formData.title,
-                description: formData.content,
+                content: formData.content,
+                category: formData.category || null,
             });
             setSuccess(true);
             setTimeout(() => {
@@ -133,7 +146,7 @@ const EditPost = () => {
 
                     <TextField
                         fullWidth
-                        label="Content"
+                        label="Content (Markdown)"
                         name="content"
                         value={formData.content}
                         onChange={handleChange}
@@ -143,6 +156,24 @@ const EditPost = () => {
                         rows={6}
                         disabled={loading}
                     />
+
+                    <FormControl fullWidth margin="normal">
+                        <InputLabel>Category</InputLabel>
+                        <Select
+                            name="category"
+                            value={formData.category}
+                            onChange={handleChange}
+                            label="Category"
+                            disabled={loading}
+                        >
+                            <MenuItem value="">None</MenuItem>
+                            {categories.map((cat) => (
+                                <MenuItem key={cat._id} value={cat._id}>
+                                    {cat.categoryName}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
 
                     <Box sx={{ display: "flex", gap: 2, mt: 3 }}>
                         <Button

@@ -34,7 +34,6 @@ const CreatePost = () => {
         title: "",
         content: "",
         category: "",
-        image: null,
     });
 
     useEffect(() => {
@@ -58,23 +57,13 @@ const CreatePost = () => {
         }));
     };
 
-    const handleImageChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setFormData((prev) => ({
-                ...prev,
-                image: file,
-            }));
-        }
-    };
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError("");
         setSuccess(false);
 
         // Validation
-        if (!formData.title || !formData.content || !formData.category || !formData.image) {
+        if (!formData.title || !formData.content || !formData.category) {
             setError("All fields are required");
             return;
         }
@@ -82,13 +71,11 @@ const CreatePost = () => {
         setLoading(true);
 
         try {
-            const postFormData = new FormData();
-            postFormData.append("title", formData.title);
-            postFormData.append("content", formData.content);
-            postFormData.append("category", formData.category);
-            postFormData.append("image", formData.image);
-
-            await createPost(postFormData);
+            await createPost({
+                title: formData.title,
+                content: formData.content,
+                category: formData.category,
+            });
             setSuccess(true);
             setTimeout(() => {
                 navigate("/list");
@@ -139,7 +126,7 @@ const CreatePost = () => {
 
                     <TextField
                         fullWidth
-                        label="Content"
+                        label="Content (Markdown)"
                         name="content"
                         value={formData.content}
                         onChange={handleChange}
@@ -166,24 +153,6 @@ const CreatePost = () => {
                             ))}
                         </Select>
                     </FormControl>
-
-                    <Box sx={{ mt: 2, mb: 2 }}>
-                        <Button variant="outlined" component="label" fullWidth>
-                            Upload Image
-                            <input
-                                type="file"
-                                hidden
-                                accept="image/*"
-                                onChange={handleImageChange}
-                                disabled={loading}
-                            />
-                        </Button>
-                        {formData.image && (
-                            <Typography variant="body2" sx={{ mt: 1 }}>
-                                Selected: {formData.image.name}
-                            </Typography>
-                        )}
-                    </Box>
 
                     <Box sx={{ display: "flex", gap: 2, mt: 3 }}>
                         <Button

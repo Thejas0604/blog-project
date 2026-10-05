@@ -14,6 +14,7 @@ import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import Link from "@mui/material/Link";
 import { AuthContext } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { logoutAPI } from "../../services/authAPI";
 //import Logo from "../../assets/react.svg";
 
 const StyledToolbar = styled(Toolbar)(({ theme }) => ({
@@ -39,9 +40,13 @@ export default function PrivateNavbar() {
         setOpen(newOpen);
     };
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        try {
+            await logoutAPI();
+        } catch (err) {
+            console.error("Logout failed:", err);
+        }
         dispatch({ type: "LOGOUT" });
-        localStorage.removeItem("token");
         navigate("/");
     };
 
@@ -166,15 +171,14 @@ export default function PrivateNavbar() {
                                     <Link href="/categories">Categories</Link>
                                 </MenuItem>
                                 <MenuItem>
-                                    <Link href="/">
-                                        <Button
-                                            color="primary"
-                                            variant="outlined"
-                                            fullWidth
-                                        >
-                                            Logout
-                                        </Button>
-                                    </Link>
+                                    <Button
+                                        color="primary"
+                                        variant="outlined"
+                                        fullWidth
+                                        onClick={handleLogout}
+                                    >
+                                        Logout
+                                    </Button>
                                 </MenuItem>
                             </Box>
                         </Drawer>

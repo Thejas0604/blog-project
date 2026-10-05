@@ -5,14 +5,22 @@ import Grid from "@mui/material/Grid2";
 import Container from "@mui/material/Container";
 import { useState, useEffect } from "react";
 import { getAllPosts } from "../../services/postsAPI";
+import { getAllCategories } from "../../services/categoryAPI";
 
 function GetAllPosts() {
     const [posts, setPosts] = useState([]);
+    const [categoryNames, setCategoryNames] = useState({});
     useEffect(() => {
         const fetchPosts = async () => {
             try {
                 const fetchedPosts = await getAllPosts();
                 setPosts(fetchedPosts);
+                const cats = await getAllCategories();
+                setCategoryNames(
+                    Object.fromEntries(
+                        (cats.categories || []).map((c) => [c._id, c.categoryName])
+                    )
+                );
             } catch (error) {
                 console.error("Error fetching posts:", error);
             }
@@ -44,7 +52,8 @@ function GetAllPosts() {
                                 <PostCard
                                     title={post.title}
                                     content={post.content}
-                                    image={post.postImage.path}
+                                    categoryName={categoryNames[post.category]}
+                                    createdAt={post.createdAt}
                                     postId={post._id}
                                 />
                             </Grid>
