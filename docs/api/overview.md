@@ -1,202 +1,201 @@
-# API Overview
+# API overview
 
-# Table of Contents
+Verified against `backend-lite/src` and by running every endpoint with `curl` against a throwaway database (2026-10-05). The Mongo-era API (`/categories`, `/user/register`, FormData uploads, email login) is gone; none of it exists in the lite build.
 
-- [API Overview](#api-overview)
-- [Table of Contents](#table-of-contents)
-  - [Intorduction](#intorduction)
-  - [Endpoints](#endpoints)
-    - [Post Endpoints](#post-endpoints)
-    - [Categories Endpoints](#categories-endpoints)
-    - [Users Endpoints](#users-endpoints)
-  - [Endpoint Details](#endpoint-details)
-    - [Post Endpoints](#post-endpoints-1)
-    - [1. **POST** `/api/v1/posts/create`](#1-post-apiv1postscreate)
-    - [2. **GET** `/api/v1/posts`](#2-get-apiv1posts)
-    - [3. **GET** `/api/v1/posts/{id}`](#3-get-apiv1postsid)
-    - [4. **PUT** `/api/v1/posts/{id}`](#4-put-apiv1postsid)
-    - [5. **DELETE** `/api/v1/posts/{id}`](#5-delete-apiv1postsid)
-    - [Categories Endpoints](#categories-endpoints-1)
-    - [1. **POST** `/api/v1/categories/create`](#1-post-apiv1categoriescreate)
-    - [2. **GET** `/api/v1/categories`](#2-get-apiv1categories)
-    - [3. **GET** `/api/v1/categories/{id}`](#3-get-apiv1categoriesid)
-    - [4. **PUT** `/api/v1/categories/{id}`](#4-put-apiv1categoriesid)
-    - [5. **DELETE** `/api/v1/categories/{id}`](#5-delete-apiv1categoriesid)
-    - [Users Endpoints](#users-endpoints-1)
-    - [1. **POST** `/api/v1/user/register`](#1-post-apiv1userregister)
-    - [2. **POST** `/api/v1/user/login`](#2-post-apiv1userlogin)
+Base: `/api/v1`. IDs are `_id` strings of integers. Success responses have `status: "success"`; errors are `{ "status": "fail", "message": "..." }`.
 
-## Intorduction
+Auth is an HttpOnly cookie named `token`, set by login. The examples use a cookie jar:
 
-This document describes the API for the **BlogMe** application. The API is a RESTful web service that uses JSON as its data format. The API is designed to be easy to use and to provide a simple interface for developers to interact with the application.
+```sh
+BASE=http://localhost:3000/api/v1
+```
 
 ## Endpoints
 
-### Post Endpoints
+| Method and path | Auth | Success |
+|---|---|---|
+| `POST /user/login` | no | 200, sets cookie |
+| `POST /user/logout` | no | 200, clears cookie |
+| `GET /user/profile` | yes | 200 |
+| `GET /posts` | no | 200 |
+| `GET /posts/:id` | no | 200 |
+| `POST /posts/create` | yes | 201 |
+| `PUT /posts/:id` | yes | 200 |
+| `DELETE /posts/:id` | yes | 200 with the deleted object in the body (not 204) |
+| `GET /category` | no | 200 |
+| `GET /category/:id` | no | 200 |
+| `POST /category/create` | yes | 201 |
+| `PUT /category/:id` | yes | 200 |
+| `DELETE /category/:id` | yes | 200 with the deleted object in the body |
+| `GET /health` (outside `/api/v1`) | no | 200 `{ "status": "ok" }` |
 
-| Method | Endpoint               | Description                       | Authentication |
-| ------ | ---------------------- | --------------------------------- | -------------- |
-| POST   | `/api/v1/posts/create` | Create a new post                 | AUTHENTICATED  |
-| GET    | `/api/v1/posts`        | Get all posts                     | No             |
-| GET    | `/api/v1/posts/{id}`   | Get a specific post by post ID    | No             |
-| PUT    | `/api/v1/posts/{id}`   | Update a specific post by post ID | AUTHENTICATED  |
-| DELETE | `/api/v1/posts/{id}`   | Delete a specific post by post ID | AUTHENTICATED  |
+Paths are literal: `/category` is singular; creates are `/posts/create` and `/category/create`. There is no register route.
 
-### Categories Endpoints
+## Cross-cutting rules
 
-| Method | Endpoint                    | Description                               | Authentication |
-| ------ | --------------------------- | ----------------------------------------- | -------------- |
-| POST   | `/api/v1/categories/create` | Create a new category                     | AUTHENTICATED  |
-| GET    | `/api/v1/categories`        | Get all categories                        | No             |
-| GET    | `/api/v1/categories/{id}`   | Get a specific category by category ID    | No             |
-| PUT    | `/api/v1/categories/{id}`   | Update a specific category by category ID | AUTHENTICATED  |
-| DELETE | `/api/v1/categories/{id}`   | Delete a specific category by category ID | AUTHENTICATED  |
+| Rule | Behavior |
+|---|---|
+| Write content type | `POST`/`PUT` on posts and categories, and `POST /user/login`, require `Content-Type: application/json`, otherwise 415 `Content-Type must be application/json`. `DELETE` and `POST /user/logout` take no body and do not check it. |
+| Check order on writes | Auth first, then content type, then id, then validation. An unauthenticated request with a wrong content type gets 401, not 415. |
+| Auth failure | Missing, invalid, expired token, or a user id that no longer exists: 401 `Not authenticated`. |
+| Ids in URLs | Must be 1 to 15 digits and greater than 0. Anything else (`abc`, `0`, `-1`) or an unknown id is 404 (`Post not found` / `Category not found`), never 500. |
+| Unknown route | JSON 404 `{"status":"fail","message":"Not found"}` for any unknown `/api/...` path. When the built frontend is present (`public/index.html`, as in the Docker image), other `GET` paths return `index.html` (SPA fallback); other methods still get the JSON 404. Without the built frontend (local backend dev) every unknown path is the JSON 404. |
+| Malformed JSON | 400 `Invalid JSON body`. |
+| Body size | Over 100 KB: 413 `request entity too large`. |
+| Server error | 500 `Internal server error` (details only in the server log). |
+| Login rate limit | See [POST /user/login](#post-userlogin). |
 
-### Users Endpoints
+Status codes in use: 200, 201, 400, 401, 404, 413, 415, 429, 500. The PLAN.md contract lists only 400, 401, 404 and 201; 413, 415 and 429 are additions (see [milestones.md](../milestones.md#phase-1-sqlite-backend-backend-lite)).
 
-| Method | Endpoint                | Description       | Authentication |
-| ------ | ----------------------- | ----------------- | -------------- |
-| POST   | `/api/v1/user/register` | Create a new user | No             |
-| POST   | `/api/v1/user/login`    | Login a user      | No             |
+No response includes `password_hash` or the JWT.
 
-## Endpoint Details
+## User
 
-### Post Endpoints
+### POST /user/login
 
-#### 1. **POST** `/api/v1/posts/create`
+Body: `{ "username": "<name>", "password": "<password>" }` (JSON only).
+Response keys: `status`, `message` (`Login successful`), `user: { _id, username, role }`. The token is not in the body.
+Cookie: `token`, HttpOnly, `SameSite=Lax`, `Path=/`, `Max-Age=604800` (7 days), `Secure` only when `NODE_ENV=production`.
 
-- **Description**: Create a new post
+Codes:
+- 200 success.
+- 401 `Invalid credentials` for every failure: unknown user, wrong password, missing or non-string fields. The same bcrypt work is done for unknown users to keep timing similar.
+- 415 not JSON.
+- 429 `Too many attempts, try again later`.
 
-- **Request Body**: FormData
+Rate limit (in memory, per client IP as seen through `trust proxy` = 1):
+- Only failed logins count. The 10th failure is still a 401; from the 11th request on, the response is 429 until the window ends.
+- The window is fixed, 15 minutes from the first failure in it (not sliding).
+- A successful login clears that IP's counter, but only while the IP is under the limit. Once blocked, even the correct password gets 429 until the window expires.
+- State is lost on restart; restarting the server also lifts a block.
 
-  - `image`: The image file to be uploaded.
-  - `content`: The content of the post in HTML format.
-  - `category`: The category of the post.
+```sh
+curl -i -c jar.txt -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"change-me"}' $BASE/user/login
+```
 
-- **Response**: `null`
-- _Status Code_: `201`: Created
+Example response body:
 
-#### 2. **GET** `/api/v1/posts`
+```json
+{"status":"success","message":"Login successful","user":{"_id":"1","username":"admin","role":"admin"}}
+```
 
-- **Description**: Get all posts
-- **Request Body**: `null`
-- **Response**:
+### POST /user/logout
 
-  - `posts`: An array of post objects.
+No body, no auth check. Response: `{ "status": "success", "message": "Logged out" }`. Clears the cookie. It is stateless; a copied token stays valid until it expires (see [architecture.md](../architecture.md#auth-flow)).
 
-- _Status Code_: `200`: OK
+```sh
+curl -b jar.txt -c jar.txt -X POST $BASE/user/logout
+```
 
-#### 3. **GET** `/api/v1/posts/{id}`
+### GET /user/profile
 
-- **Description**: Get a specific post by post ID
-- **Request Body**: `null`
-- **Response**:
-  - `post`: The post object.
-- _Status Code_: `200`: OK
+Auth required. Response keys: `status`, `user: { _id, username, role }`. Codes: 200, 401.
 
-#### 4. **PUT** `/api/v1/posts/{id}`
+```sh
+curl -b jar.txt $BASE/user/profile
+```
 
-- **Description**: Update a specific post by post ID
-- **Request Body**:
-  ```json
-  {
-    "title": "New Title",
-    "content": "New Content"
-  }
-  ```
-- **Response**: `null`
-- _Status Code_: `200`: OK
+## Posts
 
-#### 5. **DELETE** `/api/v1/posts/{id}`
+Post object keys (exactly these): `_id`, `title`, `content` (Markdown), `category` (category `_id` string or `null`), `createdAt`, `updatedAt` (ISO 8601 UTC, for example `2026-10-05T16:47:43.579Z`). There is no author field in responses.
 
-- **Description**: Delete a specific post by post ID
-- **Request Body**: `null`
-- **Response**: `null`
-- _Status Code_: `204`: No Content
+Input rules: `title` a string, 1 to 200 characters after trimming (stored trimmed); `content` a non-empty string (stored as sent). `category` is an existing category id as a string or number, `null`, or `""` (treated as null); anything else, or an id that does not exist, is 400 `category does not exist`.
 
-### Categories Endpoints
+### GET /posts
 
-#### 1. **POST** `/api/v1/categories/create`
+Optional `?category=<id>`. Response: `status`, `posts`, newest first (`created_at DESC`, then `id DESC`). No pagination. A `category` value that is not a positive integer, or matches nothing, returns 200 with `posts: []` (not 400 or 404).
 
-- **Description**: Create a new category
-- **Request Body**:
-  ```json
-  {
-    "categoryName": "Category Name"
-  }
-  ```
-- **Response**: `null`
-- _Status Code_: `201`: Created
+```sh
+curl "$BASE/posts?category=1"
+```
 
-#### 2. **GET** `/api/v1/categories`
+### GET /posts/:id
 
-- **Description**: Get all categories
-- **Request Body**: `null`
-- **Response**:
-  - `categories`: An array of category objects.
-- _Status Code_: `200`: OK
+Response: `status`, `message` (`Post fetched`), `postFound`. Codes: 200, 404.
 
-#### 3. **GET** `/api/v1/categories/{id}`
+```sh
+curl $BASE/posts/1
+```
 
-- **Description**: Get a specific category by category ID
-- **Request Body**: `null`
-- **Response**:
-  - `category`: The category object.
-- _Status Code_: `200`: OK
+### POST /posts/create
 
-#### 4. **PUT** `/api/v1/categories/{id}`
+Auth required. Body: `{ "title": "...", "content": "...", "category": "1" }`. `category` may be omitted (stored as null). Response: `status`, `message` (`Post created`), `newPost`. Codes: 201, 400, 401, 413, 415.
 
-- **Description**: Update a specific category by category ID
-- **Request Body**:
+```sh
+curl -b jar.txt -H 'Content-Type: application/json' \
+  -d '{"title":"Hello","content":"# Hi","category":"1"}' $BASE/posts/create
+```
 
-  ```json
-  {
-    "title": "New Category Name",
-    "content": "New Category Description"
-  }
-  ```
+### PUT /posts/:id
 
-- **Response**: `null`
-- _Status Code_: `200`: OK
+Auth required. `title` and `content` are required on every update (400 `content is required` if missing). `category` is optional: absent keeps the stored value, `null` clears it, an id sets it. `updatedAt` is refreshed; `createdAt` is not. Response: `status`, `message` (`Post updated`), `postUpdated`. Codes: 200, 400, 401, 404, 413, 415.
 
-#### 5. **DELETE** `/api/v1/categories/{id}`
+```sh
+curl -b jar.txt -X PUT -H 'Content-Type: application/json' \
+  -d '{"title":"New","content":"Body"}' $BASE/posts/1
+```
 
-- **Description**: Delete a specific category by category ID
-- **Request Body**: `null`
-- **Response**: `null`
-- _Status Code_: `204`: No Content
+### DELETE /posts/:id
 
-### Users Endpoints
+Auth required. Response: `status`, `message` (`Post deleted`), `deletedPost` (the post as it was). Codes: 200, 401, 404. A second delete of the same id is 404.
 
-#### 1. **POST** `/api/v1/user/register`
+```sh
+curl -b jar.txt -X DELETE $BASE/posts/1
+```
 
-- **Description**: Create a new user
-- **Request Body**:
+## Categories
 
-  ```json
-  {
-    "username": "username",
-    "email": "email",
-    "password": "password",
-    "role": "role"
-  }
-  ```
+Category object keys: `_id`, `categoryName`, `categoryDescription` (string or `null`), `postCount` (integer, computed per request).
 
-- **Response**: `null`
-- _Status Code_: `201`: Created
+Input rules: `categoryName` a string, 1 to 100 characters after trimming; `categoryDescription` a string up to 1000 characters or `null`. A duplicate name is 400 `Category already exists` (on create and on rename).
 
-#### 2. **POST** `/api/v1/user/login`
+### GET /category
 
-- **Description**: Login a user
-- **Request Body**:
+Response: `status`, `categories`, ordered by name.
 
-  ```json
-  {
-    "email": "email",
-    "password": "password"
-  }
-  ```
+```sh
+curl $BASE/category
+```
 
-- **Response**:
-- _Status Code_: `200`: OK
-- _Status Code_: `401`: Unauthorized
+### GET /category/:id
+
+Response: `status`, `message` (`Category fetched`), `categoryFound`. Codes: 200, 404.
+
+```sh
+curl $BASE/category/1
+```
+
+### POST /category/create
+
+Auth required. Body: `{ "categoryName": "...", "categoryDescription": "..." }`; `categoryName` is required, description optional. Response: `status`, `message` (`Category created`), `categoryCreated`. Codes: 201, 400, 401, 413, 415.
+
+```sh
+curl -b jar.txt -H 'Content-Type: application/json' \
+  -d '{"categoryName":"Projects","categoryDescription":"Write-ups"}' $BASE/category/create
+```
+
+### PUT /category/:id
+
+Auth required. Same input rules as create, but absent fields keep their stored value (a partial body is accepted). Response: `status`, `message` (`Category updated`), `categoryUpdated`. Codes: 200, 400, 401, 404, 413, 415.
+
+```sh
+curl -b jar.txt -X PUT -H 'Content-Type: application/json' \
+  -d '{"categoryName":"Projects","categoryDescription":"New"}' $BASE/category/1
+```
+
+### DELETE /category/:id
+
+Auth required. Response: `status`, `message` (`Category deleted`), `deletedCategory` (with `postCount` as it was before the delete). Posts in the category are kept with `category` set to `null`. Codes: 200, 401, 404.
+
+```sh
+curl -b jar.txt -X DELETE $BASE/category/1
+```
+
+## Health
+
+```sh
+curl http://localhost:3000/health   # {"status":"ok"}
+```
+
+It does not touch the database; it only shows the process is up.
