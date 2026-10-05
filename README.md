@@ -1,94 +1,44 @@
-# BlogMe
+# BlogMe Lite
 
-## Description
-This project is a comprehensive implementation of a blog system, developed to manage various blogging operations efficiently. The system focuses on robust backend architecture and effective data management, utilizing modern web technologies.
-## Table of Contents
+A minimal single-author blog: an Express API on SQLite, a React (MUI) frontend, designed to run as one Docker container behind Caddy. Only the owner can log in, write, edit and delete posts and categories; visitors read.
 
-1. [Installation](#installation)
-2. [Usage](#usage)
-3. [API Endpoints](#api-endpoints)
-4. [Technologies Used](#technologies-used)
-5. [Features](#features)
-<!-- 6. [Screenshots](#screenshots)
-7. [Database Schema](#database-schema) -->
+The original MongoDB version is kept in `backend/` and is not part of the lite build. The build plan is in [PLAN.md](PLAN.md).
 
-## Installation
-1. Clone into your local file system. Make sure to have git install beforehand.
+## Quick start (backend, local)
 
-```
-git clone https://github.com/yourusername/blog-project.git
-```
-2. Navigate to the backend directory and install the necessary Node.js modules. Make sure to have Node.js installed beforehand.
-```
-cd backend
+```sh
+cd backend-lite
+cp .env.example .env          # set JWT_SECRET (required)
 npm install
+node src/scripts/createAdmin.js
+npm run dev
+curl http://localhost:3000/health
 ```
-3. Create a .env file in the backend directory and fill it with your environment variables.
-```
-DB_HOST = your_database_host
-DB_USER = your_database_user
-DB_PASS = your_database_password
-DB_NAME = your_database_name
-JWT_SECRET = your_jwt_secret
-CLOUD_NAME = your_cloudinary_cloud_name
-CLOUD_API_KEY = your_cloudinary_api_key
-CLOUD_API_SECRET = your_cloudinary_api_secret
-```
- 4. Start the backend server using the following command:
-```
-npm run start
-```
-5. Navigate to the frontend directory and install the necessary Node.js modules.
-```
+
+## Quick start (frontend, local)
+
+```sh
 cd frontend
 npm install
-```
-  
-6. Start the frontend development server using the following command:
-```
-npm run dev
+npm run dev          # http://localhost:5173, proxies /api to localhost:3000
 ```
 
+## Docker
 
-## Usage
-1. Start the backend server as described in the installation steps.
-2. Start the frontend development server as described in the installation steps.
-3. Access the application via ``http://localhost:5173`` in your web browser.
+```sh
+cp .env.example .env     # set JWT_SECRET; use the root file, not backend-lite/.env.example
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build   # local test, port 3000
+```
 
-## API Endpoints
+Status: the `Dockerfile` now builds (it uses `npm ci --omit=dev --ignore-scripts`; reported by the lead, the full container checks ran earlier on an equivalent patched copy). Open items are in [docs/milestones.md](docs/milestones.md#phase-4-containerize). The frontend was built and its login flow checked via `curl`, but not clicked through in a browser. The droplet deployment (Phase 5) has not started.
 
-For detailed information about the API endpoints, please refer to the [API Overview](docs/api/overview.md) documentation.
+## Documentation
 
+All docs are in [docs/](docs/README.md):
 
-
-## Technologies Used
-- **Node.js**: JavaScript runtime for server-side development.
-- **Express.js**: Web framework for Node.js.
-- **MongoDB**: NoSQL database for storing blog data.
-- **Mongoose**: ODM for MongoDB.
-- **React.js**: JavaScript library for building user interfaces.
-- **Cloudinary**: Cloud service for managing images.
-- **Multer**: Middleware for handling multipart/form-data.
-- **bcryptjs**: Library for hashing passwords.
-- **jsonwebtoken**: Library for generating and verifying JWT tokens.
-- **dotenv**: Module for loading environment variables.
-
-## Features
-- **User Authentication and Authorization**: Secure login, registration, and role-based access control.
-- **Post Management**: Create, retrieve, update, and delete blog posts.
-- **Image Upload and Management**: Upload and manage images using Cloudinary.
-- **Responsive Design**: Mobile-friendly layout.
-- **Environment Configuration**: Securely manage environment variables with dotenv.
-- **Middleware and Templating**: Use Express, body-parser, and cookie-parser for routing and views.
-
-
-<!-- ## Screenshots
-![image](https://github.com/Thejas0604/banking_system_G4/assets/109301978/ffc5c5be-8ec4-4dba-a0ce-35a0ac25bdee)
-![image](https://github.com/Thejas0604/banking_system_G4/assets/109301978/d438004e-1296-4509-837f-050412a80acb) -->
-
-
-
-<!-- ## Database Schema
-
-![image](https://github.com/Thejas0604/banking_system_G4/assets/109301978/dcd89c23-7708-4676-bafa-baaec30e28e8) -->
-
+- [Architecture](docs/architecture.md)
+- [API overview](docs/api/overview.md)
+- [Development](docs/development.md)
+- [Operations](docs/operations.md)
+- [Deploy](docs/deploy.md)
+- [Milestones](docs/milestones.md)

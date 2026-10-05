@@ -1,0 +1,6 @@
+# Add to Caddy's Caddyfile (replace the host). Caddy and the blog container must
+# share the Docker network named in docker-compose.yml (default: caddy).
+blog.example.com {
+    encode gzip
+    reverse_proxy blog:3000
+}
