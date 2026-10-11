@@ -20,8 +20,13 @@ import { getAllCategories } from "../../services/categoryAPI";
 import MarkdownEditor from "./MarkdownEditor";
 
 const StyledCard = styled(Card)(({ theme }) => ({
-    padding: theme.spacing(4),
-    marginTop: theme.spacing(5),
+    padding: theme.spacing(2),
+    marginTop: theme.spacing(2),
+    marginBottom: theme.spacing(2),
+    [theme.breakpoints.up("sm")]: {
+        padding: theme.spacing(4),
+        marginTop: theme.spacing(5),
+    },
     borderRadius: "10px",
 }));
 
@@ -85,7 +90,7 @@ const CreatePost = () => {
             });
             setSuccess(true);
             setTimeout(() => {
-                navigate("/list");
+                navigate("/");
             }, 1500);
         } catch (err) {
             console.error("Error creating post:", err);
@@ -167,7 +172,7 @@ const CreatePost = () => {
                         <Button
                             variant="outlined"
                             fullWidth
-                            onClick={() => navigate("/list")}
+                            onClick={() => navigate("/")}
                             disabled={loading}
                         >
                             Cancel

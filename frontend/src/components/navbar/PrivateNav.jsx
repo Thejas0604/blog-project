@@ -12,10 +12,10 @@ import Drawer from "@mui/material/Drawer";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import Link from "@mui/material/Link";
+import Logo from "./Logo";
 import { AuthContext } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { logoutAPI } from "../../services/authAPI";
-//import Logo from "../../assets/react.svg";
 
 const StyledToolbar = styled(Toolbar)(({ theme }) => ({
     display: "flex",
@@ -29,6 +29,7 @@ const StyledToolbar = styled(Toolbar)(({ theme }) => ({
     backgroundColor: alpha(theme.palette.background.default, 0.4),
     boxShadow: theme.shadows[1],
     padding: "8px 12px",
+    position: "relative",
 }));
 
 export default function PrivateNavbar() {
@@ -57,7 +58,7 @@ export default function PrivateNavbar() {
                 boxShadow: 0,
                 bgcolor: "transparent",
                 backgroundImage: "none",
-                mt: 5,
+                mt: { xs: 1.5, md: 5 },
             }}
         >
             <Container maxWidth="lg">
@@ -79,17 +80,7 @@ export default function PrivateNavbar() {
                                     size="large"
                                     sx={{ minWidth: 0 }}
                                 >
-                                    Home
-                                </Button>
-                            </Link>
-                            <Link href="/list">
-                                <Button
-                                    variant="text"
-                                    color="primary"
-                                    size="large"
-                                    sx={{ minWidth: 0 }}
-                                >
-                                    View Blogs
+                                    Blogs
                                 </Button>
                             </Link>
                             <Link href="/create-post">
@@ -114,6 +105,7 @@ export default function PrivateNavbar() {
                             </Link>
                         </Box>
                     </Box>
+                    <Logo />
                     <Box
                         sx={{
                             display: { xs: "none", md: "flex" },
@@ -131,7 +123,7 @@ export default function PrivateNavbar() {
                         </Button>
                     </Box>
                     {/* Mobile view, have to optimize */}
-                    <Box sx={{ display: { sm: "flex", md: "none" } }}>
+                    <Box sx={{ display: { xs: "flex", md: "none" } }}>
                         <IconButton
                             aria-label="Menu button"
                             onClick={toggleDrawer(true)}
@@ -145,7 +137,7 @@ export default function PrivateNavbar() {
                         >
                             <Box
                                 sx={{
-                                    p: 2,
+                                    p: 1,
                                     backgroundColor: "background.default",
                                 }}
                             >
@@ -160,15 +152,15 @@ export default function PrivateNavbar() {
                                         <CloseRoundedIcon />
                                     </IconButton>
                                 </Box>
-                                <Divider sx={{ my: 3 }} />
-                                <MenuItem>
-                                    <Link href="/list">View Blogs</Link>
+                                <Divider sx={{ my: 1 }} />
+                                <MenuItem component="a" href="/" onClick={toggleDrawer(false)}>
+                                    Blogs
                                 </MenuItem>
-                                <MenuItem>
-                                    <Link href="/create-post">Create Post</Link>
+                                <MenuItem component="a" href="/create-post" onClick={toggleDrawer(false)}>
+                                    Create Post
                                 </MenuItem>
-                                <MenuItem>
-                                    <Link href="/categories">Categories</Link>
+                                <MenuItem component="a" href="/categories" onClick={toggleDrawer(false)}>
+                                    Categories
                                 </MenuItem>
                                 <MenuItem>
                                     <Button

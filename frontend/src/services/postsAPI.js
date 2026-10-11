@@ -11,8 +11,10 @@ export const createPost = async (postData) => {
 };
 
 //get all posts
-export const getAllPosts = async () => {
-    const response = await axiosInstance.get("/posts");
+export const getAllPosts = async (categoryId) => {
+    const response = await axiosInstance.get("/posts", {
+        params: categoryId ? { category: categoryId } : undefined,
+    });
     return response.data;
 };
 

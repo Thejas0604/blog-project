@@ -49,7 +49,7 @@ export const PostDetails = () => {
         setDeleting(true);
         try {
             await deletePost(id);
-            navigate("/list");
+            navigate("/");
         } catch (err) {
             console.error("Error deleting post:", err);
             setError("Failed to delete post");
@@ -67,8 +67,7 @@ export const PostDetails = () => {
                     display: "flex",
                     justifyContent: "center",
                     alignItems: "center",
-                    height: "80vh",
-                    margin: "10rem",
+                    height: "60vh",
                 }}
             >
                 <CircularProgress />
@@ -84,13 +83,20 @@ export const PostDetails = () => {
         >
             <Card
                 sx={{
+                    width: "100%",
+                    minWidth: 0,
                     mb: "10px",
-                    mt: "20px",
+                    mt: { xs: 1, sm: "20px" },
                     borderRadius: "10px",
                 }}
             >
                 <CardContent>
-                    <Typography gutterBottom variant="h4" component="h1">
+                    <Typography
+                        gutterBottom
+                        variant="h4"
+                        component="h1"
+                        sx={{ fontSize: { xs: "1.75rem", sm: "2.125rem" }, overflowWrap: "anywhere" }}
+                    >
                         {post.postFound.title}
                     </Typography>
                     <Typography

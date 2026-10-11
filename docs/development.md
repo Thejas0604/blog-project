@@ -25,6 +25,14 @@ Create the admin (CLI args, or no args for an interactive prompt; password at le
 node src/scripts/createAdmin.js
 ```
 
+Add sample data (test data only, needs the admin from the previous step; verified by running it against a scratch database on 2026-10-11):
+
+```sh
+npm run seed                  # same as: node src/scripts/seed.js
+```
+
+It adds 5 categories (JavaScript, DevOps, Databases, Web, Security) and 14 tech posts authored by the admin, one of them uncategorised. Posts use headings, code blocks, tables, task lists and quotes, with `created_at` spread over about two weeks. It is idempotent: categories are skipped by name and posts by title, and nothing is deleted or overwritten. First run printed `Seed done: 5 categories and 14 posts added.`, the second `0 categories and 0 posts added.` Without an admin it exits 1 with `No admin found. Run: node src/scripts/createAdmin.js`. It does not check `NODE_ENV`, so never run it on the droplet or against production data. Not verified: running it inside the container, and viewing the posts in a browser.
+
 Try an upload (after logging in with a cookie jar, see [api/overview.md](api/overview.md#post-uploads)). Images go to `backend/data/uploads/`, which is git-ignored (`data` is in `backend/.gitignore`; confirmed with `git check-ignore`).
 
 Run a backup (database only; writes to `<DB dir>/backups`, keeps 14):
@@ -96,6 +104,7 @@ curl http://localhost:3000/health
 - `docker-compose.dev.yml` is for local testing only: it publishes `127.0.0.1:3000` and replaces the external Caddy network with the default one. It needs Compose v2.24 or newer (`!override` and `!reset`; verified on Compose v5.5.1). Without it, `docker-compose.yml` is expected to fail because the external `caddy` network does not exist locally (not run).
 - The image serves the built frontend and the API on port 3000. With `NODE_ENV=production` the cookie is `Secure`; browsers accept it on `http://localhost`, but this was not tried in a browser.
 - Create the admin: `docker compose -f docker-compose.yml -f docker-compose.dev.yml exec -it blog node src/scripts/createAdmin.js`.
+- Sample data (local only): `docker compose -f docker-compose.yml -f docker-compose.dev.yml exec blog npm run seed` (or `node src/scripts/seed.js`), after creating the admin. Rebuild with `up --build` first so the image includes the script. Verified 2026-10-11 in a throwaway container (admin created, seed added 5 categories and 14 posts, second run added 0, `npm run seed` works, `/api/v1/posts` and `/api/v1/category` returned the data).
 - The Dockerfile installs with `npm ci --omit=dev --ignore-scripts` (see [milestones.md](milestones.md#phase-4-containerize)). On Windows Git Bash, paths like `/app/data` passed to `docker compose exec` are rewritten; wrap the command in `sh -c '...'`.
 
 ## Tests
@@ -115,7 +124,7 @@ src/serialize.js           DB row to API shape (_id, categoryName, ...)
 src/middleware/auth.js     requireAuth, cookie helpers, fail(status, message)
 src/middleware/http.js     requireJson (415), parseId (positive integer or null)
 src/routes/                user.js (login, logout, profile, rate limit), posts.js, categories.js, uploads.js (raw image upload)
-src/scripts/               createAdmin.js, backup.js
+src/scripts/               createAdmin.js, backup.js, seed.js (test data only)
 ```
 
 Other top-level items:

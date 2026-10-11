@@ -20,8 +20,13 @@ import { getAllCategories } from "../../services/categoryAPI";
 import MarkdownEditor from "./MarkdownEditor";
 
 const StyledCard = styled(Card)(({ theme }) => ({
-    padding: theme.spacing(4),
-    marginTop: theme.spacing(5),
+    padding: theme.spacing(2),
+    marginTop: theme.spacing(2),
+    marginBottom: theme.spacing(2),
+    [theme.breakpoints.up("sm")]: {
+        padding: theme.spacing(4),
+        marginTop: theme.spacing(5),
+    },
     borderRadius: "10px",
 }));
 

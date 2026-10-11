@@ -20,7 +20,10 @@ const Card = styled(MuiCard)(({ theme }) => ({
     flexDirection: "column",
     alignSelf: "center",
     width: "100%",
-    padding: theme.spacing(6),
+    padding: theme.spacing(3),
+    [theme.breakpoints.up("sm")]: {
+        padding: theme.spacing(6),
+    },
     gap: theme.spacing(4),
     margin: "auto",
     borderRadius: "10px",
@@ -37,8 +40,8 @@ const Card = styled(MuiCard)(({ theme }) => ({
 }));
 
 const LoginContainer = styled(Stack)(({ theme }) => ({
-    padding: 20,
-    marginTop: "10vh",
+    padding: 8,
+    marginTop: "6vh",
     borderRadius: "8px",
     "&::before": {
         content: '""',
@@ -78,7 +81,7 @@ export default function Login() {
                 });
                 if (response?.status === 200) {
                     dispatch({ type: "LOGIN", payload: response.data.user });
-                    navigate("/list");
+                    navigate("/");
                 } else {
                     setLoginError("Invalid username or password.");
                 }

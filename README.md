@@ -11,6 +11,7 @@ cd backend
 cp .env.example .env          # set JWT_SECRET (required)
 npm install
 node src/scripts/createAdmin.js
+npm run seed                  # optional sample posts (same as node src/scripts/seed.js); test data only, never in production
 npm run dev
 curl http://localhost:3000/health
 ```

@@ -13,7 +13,8 @@ import {
     Alert,
 } from "@mui/material";
 import Grid2 from "@mui/material/Grid2";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import SearchField from "../SearchField";
 import CategoryCard from "./CategoryCard";
 import { getAllCategories, deleteCategory } from "../../services/categoryAPI";
 import { AuthContext } from "../../context/AuthContext";
@@ -28,6 +29,9 @@ const GetAllCategories = () => {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [categoryToDelete, setCategoryToDelete] = useState(null);
     const [deleting, setDeleting] = useState(false);
+    const [searchParams, setSearchParams] = useSearchParams();
+    const query = searchParams.get("q") || "";
+    const setQuery = (q) => setSearchParams(q ? { q } : {}, { replace: true });
 
     useEffect(() => {
         fetchCategories();
@@ -78,14 +82,25 @@ const GetAllCategories = () => {
         );
     }
 
+    const needle = query.trim().toLowerCase();
+    const visibleCategories = needle
+        ? categories.filter((c) =>
+              [c.categoryName, c.categoryDescription]
+                  .filter(Boolean)
+                  .some((t) => t.toLowerCase().includes(needle))
+          )
+        : categories;
+
     return (
-        <Container sx={{ mt: 5 }}>
+        <Container sx={{ mt: { xs: 2, sm: 5 } }}>
             <Box
                 sx={{
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    mb: 4,
+                    flexWrap: "wrap",
+                    gap: 2,
+                    mb: { xs: 2, sm: 4 },
                 }}
             >
                 <Typography variant="h4" component="h1">
@@ -102,6 +117,10 @@ const GetAllCategories = () => {
                 )}
             </Box>
 
+            <Box sx={{ mb: 3 }}>
+                <SearchField value={query} onChange={setQuery} placeholder="Search categories" />
+            </Box>
+
             {error && (
                 <Alert severity="error" sx={{ mb: 2 }}>
                     {error}
@@ -109,9 +128,9 @@ const GetAllCategories = () => {
             )}
 
             <Grid2 container spacing={3}>
-                {categories.length > 0 ? (
-                    categories.map((category) => (
-                        <Grid2 size={4} key={category._id}>
+                {visibleCategories.length > 0 ? (
+                    visibleCategories.map((category) => (
+                        <Grid2 size={{ xs: 12, sm: 6, md: 4 }} key={category._id}>
                             <CategoryCard
                                 category={category}
                                 onDelete={handleDeleteClick}
@@ -125,7 +144,7 @@ const GetAllCategories = () => {
                             variant="body1"
                             sx={{ textAlign: "center", mt: 4 }}
                         >
-                            No categories available
+                            {needle ? "No categories match your search" : "No categories available"}
                         </Typography>
                     </Grid2>
                 )}

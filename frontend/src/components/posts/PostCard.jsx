@@ -29,7 +29,7 @@ export default function PostCard(props) {
         ? new Date(props.createdAt).toLocaleDateString()
         : "";
     return (
-        <Card sx={{ width: "100%", maxWidth: 345, mb: "10px", borderRadius: "10px" }}>
+        <Card sx={{ width: "100%", maxWidth: { xs: "none", sm: 345 }, mb: "10px", borderRadius: "10px" }}>
             <CardActionArea onClick={handleClick}>
                 <CardContent>
                     <Typography gutterBottom variant="h5" component="div">

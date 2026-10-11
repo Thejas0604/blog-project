@@ -9,7 +9,6 @@ import CssBaseline from "@mui/material/CssBaseline";
 import GetAllPosts from "./components/posts/GetAllPosts";
 import PublicNavbar from "./components/navbar/PublicNav";
 import PrivateNavbar from "./components/navbar/PrivateNav";
-import Home from "./components/home/Home";
 import Login from "./components/auth/Login";
 import { AuthContext } from "./context/AuthContext";
 import { PostDetails } from "./components/posts/PostDetails";
@@ -44,8 +43,9 @@ function App() {
                 <BrowserRouter>
                     {user ? <PrivateNavbar /> : <PublicNavbar />}
                     <Routes>
-                        <Route path="/" element={<Home />} />
-                        <Route path="/list" element={<GetAllPosts />} />
+                        <Route path="/" element={<GetAllPosts />} />
+                        <Route path="/list" element={<Navigate to="/" replace />} />
+                        <Route path="/categories/:categoryId" element={<GetAllPosts />} />
                         <Route path="/login" element={<Login />} />
                         <Route path="/posts/:id" element={<PostDetails />} />
                         <Route path="/create-post" element={adminOnly(<CreatePost />)} />

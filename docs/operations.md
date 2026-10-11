@@ -47,6 +47,8 @@ docker compose exec -it blog node src/scripts/createAdmin.js     # the non-inter
 
 The script also takes `node src/scripts/createAdmin.js <username> <email> <password>`, but that puts the password in shell history; prefer the prompt. A password under 12 characters exits with code 1 (`Password must be at least 12 characters`). If any admin exists it prints `An admin already exists; nothing to do.` and changes nothing (exit code 0). It cannot create a second admin and cannot reset a password.
 
+Warning: `src/scripts/seed.js` adds sample categories and posts for local testing. It does not check `NODE_ENV`, so do not run it in production or on the droplet. It never deletes anything, but it would put test posts on the live blog. See [development.md](development.md).
+
 ### Reset the admin password
 
 There is no reset script (password reset is out of scope). The manual procedure below was run locally: the old password returned 401 and the new one 200 afterwards. It updates the hash in place; the server can keep running.
@@ -75,7 +77,7 @@ Existing sessions are not ended by a password change: a token carries only the u
 
 ## Rotate `JWT_SECRET`
 
-`JWT_SECRET` is required in every environment: the server refuses to start (`JWT_SECRET is not set`) if it is empty, and in production also if it is shorter than 32 characters (both verified). The scripts (`createAdmin.js`, `backup.js`) do not need it.
+`JWT_SECRET` is required in every environment: the server refuses to start (`JWT_SECRET is not set`) if it is empty, and in production also if it is shorter than 32 characters (both verified). The scripts (`createAdmin.js`, `backup.js`, `seed.js`) do not need it (`seed.js` unverified on this point beyond reading that it only requires `../db`).
 
 1. Generate: `openssl rand -hex 32`
 2. Edit `.env` on the server (`JWT_SECRET=<new value>`).

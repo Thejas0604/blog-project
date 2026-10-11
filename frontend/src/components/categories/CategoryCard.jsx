@@ -5,7 +5,7 @@ import {
     CardActions,
     Typography,
     Button,
-    Box,
+    CardActionArea,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import EditIcon from "@mui/icons-material/Edit";
@@ -21,13 +21,17 @@ const CategoryCard = ({ category, onDelete, isAdmin }) => {
     return (
         <Card
             sx={{
-                minWidth: 275,
+                minWidth: 0,
                 height: "100%",
                 display: "flex",
                 flexDirection: "column",
                 borderRadius: "10px",
             }}
         >
+            <CardActionArea
+                onClick={() => navigate(`/categories/${category._id}`)}
+                sx={{ flexGrow: 1, alignItems: "flex-start" }}
+            >
             <CardContent sx={{ flexGrow: 1 }}>
                 <Typography variant="h5" component="div" gutterBottom>
                     {category.categoryName}
@@ -39,6 +43,7 @@ const CategoryCard = ({ category, onDelete, isAdmin }) => {
                     {category.postCount || 0} posts
                 </Typography>
             </CardContent>
+            </CardActionArea>
             {isAdmin && (
                 <CardActions sx={{ justifyContent: "flex-end" }}>
                     <Button
