@@ -2,7 +2,7 @@
 
 How BlogMe Lite is security-tested, how to repeat the review, and the findings of the first audit.
 
-Status (2026-10-11): the first audit's fixes, fix pass 1 and fix pass 2 are applied but uncommitted. This page was written from the developer's finding lists and from `git diff` and the code; `npm test` in `backend/` was run by the docs pass (17 of 17 pass). Browser, Linux file-mode, running-container and real-Caddy checks are unverified and listed in [Open checks](#open-checks). **Final re-audit (2026-10-11, after fix pass 2): no Critical, High or Medium findings. M-A, L-A to L-E, I-E and I-G are Closed; no regression in M1, L1 to L8, L10, I2, I3. New and open: N1 and N2 (Low), I-H to I-N (Informational). Still open from before: I-A to I-D; I-F, L9, I1, I4, I5 accepted. See [Final re-audit](#final-re-audit-2026-10-11).**
+Status (2026-10-11): the first audit's fixes, fix pass 1 and fix pass 2 are applied but uncommitted. This page was written from the developer's finding lists and from `git diff` and the code; `npm test` in `backend/` was run by the docs pass (17 of 17 pass). Browser, Linux file-mode, running-container and real-Caddy checks are unverified and listed in [Open checks](#open-checks). **Mermaid audit (2026-10-11): no Critical or High; MD-M1 (Medium), MD-L1 and MD-L2 (Low) fixed in the working tree, see [Mermaid audit](#mermaid-audit-2026-10-11).** **Final re-audit (2026-10-11, after fix pass 2): no Critical, High or Medium findings. M-A, L-A to L-E, I-E and I-G are Closed; no regression in M1, L1 to L8, L10, I2, I3. New and open: N1 and N2 (Low), I-H to I-N (Informational). Still open from before: I-A to I-D; I-F, L9, I1, I4, I5 accepted. See [Final re-audit](#final-re-audit-2026-10-11).**
 
 Related: [architecture.md](architecture.md#auth-flow) (auth design), [operations.md](operations.md) (secret rotation, lockout), [deploy.md](deploy.md) (Caddy, network), [testing.md](testing.md#7-security-spot-checks) (manual spot checks).
 
@@ -39,7 +39,7 @@ The tests cover: admin-only writes (403/401), logout revocation, `tv` claim requ
 | Authorization | Does every write route require `requireAuth` and `requireAdmin`? Do public routes expose only intended fields (no `password_hash`)? | `routes/*.js`, `serialize.js` |
 | SQL injection | Is every query a prepared statement with bound parameters? Any string-built SQL? Ids parsed through `parseId`? | `routes/*.js`, `db.js`, `scripts/` |
 | Uploads | Size limit, magic-byte check matching the declared type, SVG rejected, random server-made names, no path traversal, `nosniff` + sandbox CSP on `/uploads`, upload directory cannot overlap the database. Known gap: image metadata (EXIF) is kept. | `routes/uploads.js`, `uploadDir.js`, `app.js` |
-| XSS and Markdown | Is raw HTML escaped (no `rehype-raw`)? One renderer for preview and published page? Tokens or user data in `localStorage`? | `frontend/src/components/posts/PostContent.jsx`, `frontend/src/utils/axiosInstance.js` |
+| XSS and Markdown | Is raw HTML escaped (no `rehype-raw`)? One renderer for preview and published page? Tokens or user data in `localStorage`? Mermaid: is `securityLevel` still `strict`, the version pinned, and are diagram directives/frontmatter still refused (`hasMermaidConfig`)? | `frontend/src/components/posts/PostContent.jsx`, `frontend/src/utils/axiosInstance.js` |
 | CSRF and CORS | Cookie `SameSite=Lax`, writes need `application/json` (415 otherwise), CORS only in development/test, no wildcard origin with credentials. Known gap: no Origin/Referer check (accepted, I1). | `app.js`, `middleware/http.js` |
 | Headers | CSP, `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options`, no `X-Powered-By`; HSTS in Caddy. Check the CSP against the real frontend in a browser. | `app.js`, `Caddyfile.snippet` |
 | Container and deploy | Non-root user, no published ports, private network, `cap_drop`, `no-new-privileges`, memory limit, `HEALTHCHECK`, secrets only in `.env` (git-ignored, `.dockerignore`d), install flags, image base. | `Dockerfile`, `docker-compose*.yml`, `.dockerignore`, `.gitignore` |
@@ -93,11 +93,47 @@ Source: the developer's finding list. The `file:line` and exploit text of the or
 | I4 | Informational | Dependency install runs with `--ignore-scripts`. | No change needed. The flag limits what dependency install scripts can do and is already in the Dockerfile (needed anyway because the slim image has no compiler). The image build with it was reported OK by the developer; not re-run by the docs pass (unverified). |
 | I5 | Informational | Use a separate production `JWT_SECRET`. | Guidance, not code. Generate a fresh value on the droplet (`openssl rand -hex 32`); never reuse a development value or one that has been pasted anywhere. Rotation: [operations.md](operations.md#rotate-jwt_secret). |
 
+## Mermaid diagrams (frontend)
+
+Added 2026-10-11 (uncommitted when documented; read from `MermaidDiagram.jsx`, `mermaidUtils.js`, `PostContent.jsx`, `package.json`). The audit of this feature and its fixes are in [Mermaid audit](#mermaid-audit-2026-10-11) below.
+
+- Fenced `mermaid` blocks are rendered by the `mermaid` library, initialized with `securityLevel: 'strict'`. The resulting SVG is put in the page with `innerHTML`; this relies on Mermaid's strict mode sanitizing the SVG (the code comment says DOMPurify). That reliance is the point to keep in mind: a regression or bypass in Mermaid's sanitizer would be an XSS path. The diagram source is admin-authored Markdown.
+- Raw HTML in Markdown is still not rendered (no `rehype-raw`). Only the `pre` renderer changed, and only for `language-mermaid`.
+- Diagram source is not trusted to carry config: `hasMermaidConfig` (`mermaidUtils.js:15-18`) refuses `%%{` directives and leading `---` frontmatter before Mermaid is imported; `mermaid.initialize` (`MermaidDiagram.jsx:50-57`) also sets `themeCSS: ""`, `htmlLabels: false` and `flowchart.htmlLabels: false`.
+- The CSP was not changed. It has no `unsafe-eval`; the developer reports no direct `eval` or `new Function` in Mermaid's browser path (a lodash `Function('return this')` fallback is described as unreachable in browsers; not checked by the docs pass). Styles in the SVG rely on the existing `style-src 'unsafe-inline'`.
+- New dependency, pinned exactly (`"mermaid": "11.17.2"`, no caret), with a large transitive tree in `frontend/package-lock.json`. Bump it deliberately: read the changelog, run `npm run build` and `npm test`, render a flowchart and an invalid block in a browser, and check the console for CSP violations. Run `npm audit` in `frontend/` after changes (not run by the docs pass).
+- Mermaid is fetched only on pages that render a diagram; the runtime image still serves static files.
+
+## Mermaid audit (2026-10-11)
+
+Source: the auditor's read of the mermaid 11.17.2 source (no browser). Outcome: no Critical, no High. IDs are prefixed `MD-` because M1 and L1 are already used by the first audit above. Line numbers refer to the working tree after the fix (the pre-fix lines were not available to the docs pass). "Fixed" is read from the code and the tests; the fix has not been re-audited.
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| MD-M1 | Medium | A post's Mermaid source could carry a `%%{init: {"themeCSS": ...}}%%` directive or leading `---` frontmatter with `config:`. `themeCSS` is not a "secure" key and is added unscoped to the SVG's style; the SVG is inserted with `innerHTML` (`MermaidDiagram.jsx:61`), so it could apply page-wide CSS: a fake overlay, hidden UI, or tracking through `url(https:...)` because the CSP allows `img-src https:`. Only the admin writes posts, so exploiting it needs a compromised admin account or a future multi-author setup. | Fixed |
+| MD-L1 | Low | When a render failed after the component unmounted or went stale, Mermaid's temporary elements `d<id>` and `i<id>` stayed in `<body>`. | Fixed |
+| MD-L2 | Low | Defence in depth: `htmlLabels` was not turned off, so labels could carry HTML (`foreignObject`) content. | Fixed |
+
+What changed:
+
+- MD-M1: `hasMermaidConfig(code)` (`frontend/src/components/posts/mermaidUtils.js:15-18`) is true for `%%` followed by optional whitespace and `{` anywhere in the source, or for a leading `---` frontmatter fence; it is false for `A --- B` and for plain `%%` comments. In that case `MermaidDiagram.jsx` (`:38`, `:41`, `:79`) does not import or call Mermaid and shows the source in `<pre><code>` with the caption `Diagram directives and frontmatter are not allowed.` `initialize` also sets `themeCSS: ""` (`:54`). Tests: `hasMermaidConfig rejects directives and frontmatter` and `hasMermaidConfig allows normal diagrams` (`mermaidUtils.test.js`).
+- MD-L1: `removeTempElements(id)` (`MermaidDiagram.jsx:26-29`) runs in `catch` before the stale check (`:65`), in `finally` (`:69`) and in the effect cleanup (`:75`).
+- MD-L2: `htmlLabels: false` and `flowchart: { htmlLabels: false }` in `initialize` (`:55-56`).
+
+Informational (no change made):
+
+- Heavy or huge diagrams can slow or freeze the reader's own browser (reader-side denial of service). Admin-authored content only.
+- Remote images in diagram labels have the same exposure as Markdown images (see I-F: `img-src` allows any `https:`).
+- Mermaid 12.x exists; 11.17.2 stays pinned. Upgrade deliberately (procedure above).
+
+Verification: the docs pass ran frontend `npm test` (5 of 5 pass). Developer-reported: `npm run build` ok; backend `npm test` 17 pass; headless Chrome against the real backend CSP, dark theme: flowchart, sequence, ER and state diagrams render; directive and frontmatter blocks fall back with the caption and no page CSS; an invalid diagram falls back; no stray body elements; no CSP violations. Unverified: editor preview, light theme, other diagram types (gantt, class and so on), Docker build. ESLint on the posts folder reported 21 errors (developer-reported), mostly existing prop-types/unused React; whether the new code adds any was not checked.
+
 ## Open checks
 
 Not seen by the docs pass; each can invalidate a "Fixed" above:
 
 - CSP in a browser: confirm the login page, a post with images, and the editor load with no console violations ([testing.md 7.8](testing.md#7-security-spot-checks)).
+- Mermaid: strict-mode sanitization with a hostile diagram source (for example `click` callbacks or script in labels) in a browser; the editor preview; light theme; diagram types other than flowchart, sequence, ER and state (gantt, class and so on); the Docker build with the new dependency; lint errors from the new code. Flowchart, sequence, ER and state diagrams, the directive/frontmatter fallback and an invalid block were rendered in headless Chrome (dark theme, real CSP, no violations; developer-reported).
 - Mode 0600/0700 of backups on a Linux host, and the failed-backup cleanup path.
 - `NODE_ENV` inside the running container (`docker compose exec blog printenv NODE_ENV`).
 - HSTS (now with `includeSubDomains`) and the `blog-net` attachment with a real Caddy; Caddy reaching `blog:3000`.

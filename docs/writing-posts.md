@@ -40,6 +40,39 @@ Raw HTML is not rendered (no `rehype-raw`): `<div>`, `<b>` or `<script>` typed i
 
 Verified: `npm run build` and a server-side render of a sample (table, `<del>`, disabled checkboxes, escaped raw `<script>` and `<b>`, lazy responsive image). Unverified in a browser: the visual styling of tables and task lists, and the dark mode look.
 
+## Diagrams
+
+A fenced block whose language is `mermaid` is drawn as a diagram instead of shown as code. Write the fence with three backticks and `mermaid`:
+
+````
+```mermaid
+flowchart LR
+  A[Write] --> B[Preview] --> C[Publish]
+```
+````
+
+````
+```mermaid
+sequenceDiagram
+  Reader->>Blog: GET /posts/1
+  Blog-->>Reader: HTML
+```
+````
+
+Behavior (from `PostContent.jsx` and `MermaidDiagram.jsx`):
+
+- Only `mermaid` fences are affected. Every other code block, including plain ASCII art in a block with no language or another language, renders as before.
+- The Mermaid library is a separate download that the browser fetches only when a post (or the preview) contains a `mermaid` block. Other pages do not load it.
+- In the editor preview the diagram re-renders after you stop typing for 400 ms; an older render that finishes late is ignored.
+- While loading, and if the diagram has a syntax error, the source is shown as a code block. On error a small note says `Diagram could not be rendered.`
+- Wide diagrams scroll horizontally. The diagram colors follow the site's light or dark mode.
+- Mermaid runs with `securityLevel: 'strict'`, so scripts and click handlers in a diagram are not allowed. Raw HTML in the rest of the post is still escaped.
+- Diagram directives (`%%{init: ...}%%`, anywhere in the block) and a leading `---` frontmatter block (`config:`, `title:`) are not allowed. Such a block is not drawn: it shows as plain code with the note `Diagram directives and frontmatter are not allowed.` Remove the directive or frontmatter to get the diagram. Theme and style options cannot be set this way; the diagram follows the site's light or dark mode.
+- Still allowed: plain `%% comment` lines, and `---` inside a diagram such as `A --- B` (only a `---` line at the very start of the block counts as frontmatter).
+- The post list excerpt is built from the Markdown text; whether a `mermaid` block shows up there as raw source was not checked (unverified).
+
+Verified: a headless Chrome run against the built app rendered a flowchart and fell back to source for an invalid block, with no CSP violations (reported by the developer, not repeated by the docs pass). After the security fix the developer also reported sequence, ER and state diagrams rendering, and directive and frontmatter blocks falling back with the caption (dark theme). Unverified: the editor preview, the light theme, other diagram types (gantt, class and so on), the 400 ms delay while typing, and the Docker build. See [milestones.md](milestones.md#mermaid-diagrams-2026-10-11).
+
 ## Adding images
 
 Images are uploaded to the server and inserted as Markdown. Three ways, all unverified in a browser:
@@ -92,6 +125,12 @@ Things to know:
     code block (fence with three backticks on their own lines)
     ```
 
+    ```mermaid
+    flowchart LR
+      A --> B
+    ```
+    (a fence with the language mermaid is drawn as a diagram)
+
 [link text](https://example.com)
 
 ![alt text](/uploads/<name>.png)
@@ -101,4 +140,4 @@ A blank line starts a new paragraph.
 (three dashes on their own line: horizontal rule)
 ```
 
-(In the code block row above the fence is indented only so it displays inside this sample; write the three backticks at the start of the line in a post.)
+(In the code block rows above, the fences is indented only so it displays inside this sample; write the three backticks at the start of the line in a post.)

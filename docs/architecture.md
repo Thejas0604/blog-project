@@ -44,7 +44,7 @@ sequenceDiagram
 
 ## Frontend (`frontend/`)
 
-React 18, Vite, MUI, React Router 6, `react-markdown` with `remark-gfm`. One HTTP client: `src/utils/axiosInstance.js` with `baseURL = (VITE_API_URL ?? "") + "/api/v1"` and `withCredentials: true`. In production the frontend is same-origin, so `VITE_API_URL` is unset; in dev Vite proxies `/api` and `/uploads` to `http://localhost:3000` (`vite.config.js`), so it is unset there too.
+React 18, Vite, MUI, React Router 6, `react-markdown` with `remark-gfm`, and `mermaid` (loaded lazily). One HTTP client: `src/utils/axiosInstance.js` with `baseURL = (VITE_API_URL ?? "") + "/api/v1"` and `withCredentials: true`. In production the frontend is same-origin, so `VITE_API_URL` is unset; in dev Vite proxies `/api` and `/uploads` to `http://localhost:3000` (`vite.config.js`), so it is unset there too.
 
 Auth state lives in `AuthContext` (a reducer with `user` and `ready`). Nothing is stored in `localStorage`; the session is the HttpOnly cookie.
 
@@ -78,10 +78,13 @@ flowchart TB
   PD[PostDetails] --> PC
   UA --> AX[axiosInstance]
   PC --> RM[react-markdown + remark-gfm<br/>no rehype-raw]
+  RM -->|pre with language-mermaid| MD[MermaidDiagram]
+  MD -.->|dynamic import| MC[mermaid chunk<br/>loaded on demand]
 ```
 
-- Custom component, no new dependency. Toolbar: bold, italic, heading, bullet list, numbered list, quote, inline code, code block, link, image. Below the `md` breakpoint a Write/Preview toggle; at `md` and up, text box and preview side by side.
+- Custom component, no editor library. Toolbar: bold, italic, heading, bullet list, numbered list, quote, inline code, code block, link, image. Below the `md` breakpoint a Write/Preview toggle; at `md` and up, text box and preview side by side.
 - `PostContent` is the single renderer for the preview and the post page. `remark-gfm` adds tables (wrapped in a horizontal scroll div, theme divider borders), strikethrough, task lists (disabled checkboxes) and bare-URL autolinks. No `rehype-raw`, so raw HTML is escaped and shown as text. Images are `loading="lazy"` and capped to the container width.
+- Mermaid diagrams (uncommitted when documented; read from the code): `PostContent` overrides `pre` only when its child `code` has class `language-mermaid` (`mermaidUtils.js`); it then renders `MermaidDiagram`. All other `pre` blocks render unchanged. `MermaidDiagram` waits 400 ms, then, unless `hasMermaidConfig(code)` is true (see below), `import("mermaid")` (dynamic, so it lands in a separate chunk fetched only when such a block renders; developer-reported size of `mermaid.core` about 696 KB, 172 KB gzip, plus small per-diagram chunks; not re-measured by the docs pass), calls `mermaid.initialize` with `securityLevel: "strict"`, a theme from the MUI palette mode, `themeCSS: ""` and `htmlLabels: false` (also under `flowchart`), renders, ignores the result if the input changed meanwhile, and sets the SVG with `innerHTML`. While loading or on error it shows the source in `<pre><code>`, plus a note on error. A source with a `%%{ ... }%%` directive or a leading `---` frontmatter fence is never passed to Mermaid: it shows as plain code with the note `Diagram directives and frontmatter are not allowed.` (closes the themeCSS page-wide CSS path, MD-M1). Temporary `d<id>`/`i<id>` elements Mermaid adds to `<body>` are removed on failure, in `finally` and on cleanup. See [security.md](security.md#mermaid-diagrams-frontend).
 - `CreatePost` and `EditPost` pass `onBusyChange`; Save is disabled while any upload is pending.
 - `PostCard` builds its list excerpt from the Markdown with images, table pipes and task markers removed.
 
@@ -214,6 +217,7 @@ flowchart TB
 | Server-made random name (UUID plus detected extension), written with `wx` | No path traversal, no overwrite, no reliance on the client filename. |
 | `nosniff` and a sandbox CSP on `/uploads`, long immutable cache | Stops a mis-typed file being run as something else; names are unique and never change. |
 | Uploads on the local volume, no cloud storage | One volume to back up; no external service. Cost: backups must cover `uploads/` too. |
+| Mermaid via dynamic import, pinned exactly (`11.17.2`), `securityLevel: 'strict'`, diagram directives and frontmatter refused | The library is large, so only posts with a diagram pay for it; strict mode sanitizes the SVG set via `innerHTML` and disables click handlers; directives and frontmatter are refused because `themeCSS` is not a secure key and would add unscoped page-wide CSS; an exact pin because a minor bump changes a large rendering and sanitizing dependency. No CSP change was needed (no `unsafe-eval` in the policy; the developer reports no direct `eval` or `new Function` use). |
 | Out of scope: OAuth, cloud or multipart uploads (only the admin raw image upload exists), likes, comments, registration, drafts, slugs, pagination, search | Keep it lite; may come in Phase 6. |
 | Custom Markdown editor, no editor library | No new dependency; the toolbar is small pure functions in `markdownActions.js`. |
 | One `PostContent` renderer, no `rehype-raw` | Preview matches the published page; raw HTML in a post is never rendered. |
@@ -228,5 +232,5 @@ Added during Phase 1: login rate limit (in memory, per IP), 415 on non-JSON writ
 - [ ] Browser behavior of the frontend (Phase 3 click-through) and of the Phase 7 editor (see [writing-posts.md](writing-posts.md)).
 - [ ] Browser check of the public read-only change: no Login button on desktop or in the mobile drawer, `/login` still reachable by typing it, `/robots.txt` on the droplet ([testing.md](testing.md#31-logged-out-read-only-checks)).
 - [ ] Attach Caddy to `blog-net` on the droplet and confirm Caddy reaches `blog:3000` (Phase 5; unverified).
-- [ ] Browser check that the CSP does not block the app (unverified).
+- [ ] Browser check that the CSP does not block the app (unverified). For Mermaid only, a headless Chrome run with the real CSP showed no violations for a flowchart (developer-reported); other diagram types and the editor preview are unchecked.
 - [ ] Full container checks re-run against the committed Dockerfile (it builds; the checks used an equivalent patched copy).

@@ -171,6 +171,18 @@ One section per phase of `/PLAN.md`. A phase is "done" only when its "Done when"
 - Changed from plan: the dev override now runs the container with `NODE_ENV=development`, so a local container test gets a non-Secure cookie and works over `http://localhost`.
 - Known gaps: N1, N2 and I-H to I-N above; after a restart during an attack the owner can be locked out of login until the 15 minute window ends (M-A residual); a password reset does not bump `token_version`; accepted risks L9 and I1.
 
+## Mermaid diagrams (2026-10-11)
+
+- Status: built, uncommitted when documented; not a PLAN.md phase. Seen by the docs pass: the code and diff were read, and `npm test` in `frontend/` ran 5 tests, 5 pass (2026-10-11, after the audit fix below). The build, the backend tests and the headless Chrome check below are developer-reported.
+- Built: `frontend/src/components/posts/MermaidDiagram.jsx` (lazy `import("mermaid")`, `securityLevel: 'strict'`, theme from the MUI palette mode, 400 ms delay, stale results ignored, source fallback plus `Diagram could not be rendered.` on error, horizontal scroll), `mermaidUtils.js` with `mermaidUtils.test.js`, a `pre` override in `PostContent.jsx` for `language-mermaid` only, `mermaid` pinned at `11.17.2` in `frontend/package.json` (lockfile updated), and a frontend `npm test` script.
+- Changed from plan: not in PLAN.md. No CSP change; still no `rehype-raw`.
+- Verification (developer-reported): frontend `npm run build`; backend `npm test` 17 pass; headless Chrome against the built app with the real CSP rendered a flowchart, fell back to source for an invalid block, and showed no CSP violations.
+- Not verified: editor preview, light theme, other diagram types, the 400 ms delay while typing, the Docker build, hostile-source sanitization.
+- Security audit and fix (2026-10-11, uncommitted): the auditor read the mermaid 11.17.2 source (no browser) and found no Critical or High. MD-M1 (Medium): a diagram could carry a `%%{init: {"themeCSS": ...}}%%` directive or leading `---` frontmatter `config:`, adding page-wide CSS. MD-L1 and MD-L2 (Low): leftover temp elements, and `htmlLabels` defence in depth. Fixed: `hasMermaidConfig` in `mermaidUtils.js` (a directive anywhere, or a leading `---` fence; `A --- B` and plain `%%` comments stay allowed); `MermaidDiagram.jsx` then does not import Mermaid and shows the source with `Diagram directives and frontmatter are not allowed.`; temp elements removed in `catch`, `finally` and cleanup; `initialize` sets `themeCSS: ""`, `htmlLabels: false`, `flowchart.htmlLabels: false`. Details: [security.md](security.md#mermaid-audit-2026-10-11).
+- Verification of the fix: docs pass saw frontend `npm test` 5 of 5 pass. Developer-reported: `npm run build` ok, backend `npm test` 17 pass, headless Chrome against the real backend CSP in dark theme rendered flowchart, sequence, ER and state diagrams; directive and frontmatter blocks fell back with the caption and no page CSS; an invalid diagram fell back; no stray body elements; no CSP violations.
+- Still unverified: editor preview, light theme, other diagram types (gantt, class and so on), Docker build. Lint on `src/components/posts` reported 21 errors (developer-reported), mostly existing prop-types/unused React; whether the new code adds any was not checked.
+- Known gaps: frontend lint now has about 44 errors (3 new of the same kind from this component); a separate chunk of about 696 KB (172 KB gzip) for `mermaid.core`; a new dependency to keep pinned. Docs: [writing-posts.md](writing-posts.md#diagrams), [security.md](security.md#mermaid-diagrams-frontend).
+
 ## Known gaps / next steps
 
 1. Phase 4 follow-ups: measure image vulnerabilities (needs a scanner or a `docker scout` login), and run the Caddy network, `stop`/`restart` and backup pruning checks.
@@ -182,4 +194,5 @@ One section per phase of `/PLAN.md`. A phase is "done" only when its "Done when"
 7. Phase 5 on the droplet: attach Caddy to `blog-net`, swap for the build, cron, off-droplet backup copy, real restore.
 8. Phase 7: click through the editor in a browser (toolbar, paste, drag-drop, picker, failure flow, preview, Save during upload, images on the post page), then the other unverified items listed under Phase 7 (Caddy, JPEG/GIF/WebP uploads).
 9. Documentation upkeep: the 413/415/429 status codes and the partial `PUT /category/:id` are still missing from PLAN.md (reported, not edited).
-10. Security: fix N1 and N2, then I-H/I-I and I-K ([security.md](security.md#next-actions)); browser check of the CSP; confirm HSTS, `NODE_ENV` in the container, backup modes on Linux and `blog-net` with real Caddy.
+10. Mermaid: browser-check the editor preview, light theme and other diagram types (gantt, class and so on); check whether the new code adds lint errors; confirm the Docker build with the new dependency.
+11. Security: fix N1 and N2, then I-H/I-I and I-K ([security.md](security.md#next-actions)); browser check of the CSP; confirm HSTS, `NODE_ENV` in the container, backup modes on Linux and `blog-net` with real Caddy.

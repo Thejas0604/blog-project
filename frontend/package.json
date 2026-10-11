@@ -7,7 +7,8 @@
         "dev": "vite",
         "build": "vite build",
         "lint": "eslint .",
-        "preview": "vite preview"
+        "preview": "vite preview",
+        "test": "node --test src/components/posts/mermaidUtils.test.js"
     },
     "dependencies": {
         "@emotion/react": "^11.14.0",
@@ -17,6 +18,7 @@
         "@mui/material": "^6.1.1",
         "@mui/styled-engine-sc": "^6.1.1",
         "axios": "^1.7.7",
+        "mermaid": "11.17.2",
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
         "react-markdown": "^10.1.0",

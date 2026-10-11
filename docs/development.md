@@ -70,6 +70,7 @@ npm install
 npm run dev        # Vite dev server, http://localhost:5173
 npm run build      # writes frontend/dist (verified)
 npm run lint       # eslint . (currently fails, see below)
+npm test           # node --test on mermaidUtils.test.js (5 tests)
 npm run preview
 ```
 
@@ -89,7 +90,8 @@ Notes:
   - `PostContent.jsx`: the one Markdown renderer, used by the editor preview and `PostDetails`. No `rehype-raw`; images are lazy and capped to the column width.
   - `CreatePost.jsx` and `EditPost.jsx` use the editor and disable Save while it reports a pending upload. `PostCard.jsx` drops image Markdown from the list excerpt.
   - `src/services/uploadsAPI.js`: `uploadImage(file)` posts the raw `File` to `/uploads` with its own `Content-Type`; checks type and 5 MB first.
-- Lint: `npm run lint` (`npx eslint src`) reported 35 errors and 1 warning on 2026-10-05 before Phase 7, and 42 errors after it, per the developer (not re-run by the docs pass). They are `react/prop-types` and unused `React` imports; the build does not depend on lint.
+- Mermaid (uncommitted when documented): `MermaidDiagram.jsx` renders `mermaid` fenced blocks (lazy `import("mermaid")`, `securityLevel: 'strict'`, 400 ms delay, source fallback); `mermaidUtils.js` holds the pure helpers; `PostContent.jsx` overrides `pre` only for `language-mermaid`. Dependency policy: `mermaid` is pinned to an exact version in `package.json` (`11.17.2`, no `^`). Bump with `npm install --save-exact mermaid@<version>` and check it as described in [security.md](security.md#mermaid-diagrams-frontend). It adds a large separate chunk to `dist/` (developer-reported, about 696 KB / 172 KB gzip for `mermaid.core`).
+- Lint: `npm run lint` (`npx eslint src`) reported 35 errors and 1 warning on 2026-10-05 before Phase 7, and 42 errors after it, per the developer (not re-run by the docs pass). They are `react/prop-types` and unused `React` imports; the build does not depend on lint. The developer reports about 44 errors now, 3 of the same kind from `MermaidDiagram.jsx` (not re-run by the docs pass).
 - Not clicked through in a browser: Markdown rendering, 404 page, route redirects, logout button, reload persistence, the 429 message, the mobile menu, and everything in the editor (toolbar, selection restore, paste, drag-drop, image picker, preview and layout, Save disabled during upload, images on the post page).
 
 ## Docker (local)
@@ -122,7 +124,7 @@ npm install     # supertest is a devDependency
 npm test        # node --test "test/*.test.js"
 ```
 
-They use `node:test` and `supertest` with `DB_PATH=:memory:` and `NODE_ENV=test` (`test/helpers.js` sets this before loading the app). Files: `auth.test.js` (requireAdmin, logout revocation, headers, `Secure` cookie off in test and on in production), `limiter.test.js` (per-IP, IPv6 /64, global cap with the known-good exemption), `trustProxy.test.js`, `config.test.js` (`JWT_SECRET` checks including the distinct-character rule, migration, `UPLOAD_DIR` guard including the backups directory). They cover security behavior only, not the full API; the Phase 2 coverage list is still mostly manual. The frontend has no tests. Security review process: [security.md](security.md).
+They use `node:test` and `supertest` with `DB_PATH=:memory:` and `NODE_ENV=test` (`test/helpers.js` sets this before loading the app). Files: `auth.test.js` (requireAdmin, logout revocation, headers, `Secure` cookie off in test and on in production), `limiter.test.js` (per-IP, IPv6 /64, global cap with the known-good exemption), `trustProxy.test.js`, `config.test.js` (`JWT_SECRET` checks including the distinct-character rule, migration, `UPLOAD_DIR` guard including the backups directory). They cover security behavior only, not the full API; the Phase 2 coverage list is still mostly manual. Frontend: `npm test` in `frontend/` runs `node --test src/components/posts/mermaidUtils.test.js` (5 tests for `getCodeLanguage`, `isMermaidClass`, `childrenToText` and `hasMermaidConfig`; all pass, seen by the docs pass on 2026-10-11). They cover only those pure helpers; there are no component or browser tests. Security review process: [security.md](security.md).
 
 ## Project layout (`backend/`)
 
@@ -145,7 +147,8 @@ Other top-level items:
 ```
 frontend/                  React app (Vite). src/App.jsx routes, src/context/AuthContext.jsx,
                            src/utils/axiosInstance.js, src/services/*API.js (incl. uploadsAPI.js), src/components/{auth,posts,categories,navbar,home}
-                           posts/ holds MarkdownEditor.jsx, markdownActions.js, PostContent.jsx
+                           posts/ holds MarkdownEditor.jsx, markdownActions.js, PostContent.jsx,
+                           MermaidDiagram.jsx, mermaidUtils.js (+ mermaidUtils.test.js)
 Dockerfile                 stage 1 builds frontend, stage 2 runs backend with the build in public/
 docker-compose.yml         service `blog`, volume `blog-data`, private internal network `blog-net`, cap_drop ALL, no-new-privileges
 docker-compose.dev.yml     local override: publishes 127.0.0.1:3000

@@ -2,6 +2,8 @@ import React from "react";
 import { Box } from "@mui/material";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import MermaidDiagram from "./MermaidDiagram";
+import { isMermaidClass, childrenToText } from "./mermaidUtils";
 
 // No rehype-raw: raw HTML in Markdown is never rendered.
 const components = {
@@ -21,6 +23,15 @@ const components = {
             <table {...props} />
         </div>
     ),
+    // Only ```mermaid fences become diagrams; every other block renders as before.
+    // eslint-disable-next-line no-unused-vars
+    pre: ({ node, children, ...props }) => {
+        const code = React.Children.toArray(children)[0];
+        if (React.isValidElement(code) && isMermaidClass(code.props.className)) {
+            return <MermaidDiagram code={childrenToText(code.props.children)} />;
+        }
+        return <pre {...props}>{children}</pre>;
+    },
     // GFM task-list checkboxes are read-only.
     // eslint-disable-next-line no-unused-vars
     input: ({ node, ...props }) => <input {...props} disabled readOnly />,
