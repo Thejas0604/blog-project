@@ -1,7 +1,12 @@
-# Add to Caddy's Caddyfile (replace the host). Caddy and the blog container must
-# share the Docker network named in docker-compose.yml (default: caddy).
+# Add to Caddy's Caddyfile (replace the host). Caddy must be attached to the private
+# blog-net network created by docker-compose.yml (the only container that shares it):
+#   docker network connect blog-net <caddy-container>
+# or add blog-net as an external network to Caddy's own compose service so it
+# survives Caddy being recreated.
 blog.example.com {
     encode gzip
+    # Remove includeSubDomains if any subdomain of this domain is HTTP-only.
+    header Strict-Transport-Security "max-age=31536000; includeSubDomains"
     request_body {
         max_size 6MB
     }

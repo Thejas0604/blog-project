@@ -4,12 +4,20 @@ services:
     init: true
     restart: unless-stopped
     env_file: .env
+    # Wins over env_file: production cookie/secret rules cannot be switched off by .env.
+    environment:
+      NODE_ENV: production
     volumes:
       - blog-data:/app/data
     mem_limit: 300m
-    # No published ports: Caddy reaches this service as blog:3000 over the shared network.
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    # No published ports: Caddy reaches this service as blog:3000 over the private
+    # blog-net network. Only Caddy should join it (see Caddyfile.snippet), so other
+    # containers on Caddy's own network cannot reach the blog directly.
     networks:
-      caddy:
+      blog-net:
         aliases:
           - blog
 
@@ -17,7 +25,8 @@ volumes:
   blog-data:
 
 networks:
-  caddy:
-    external: true
-    # Name of Caddy's existing Docker network (set CADDY_NETWORK in the shell or .env to override).
-    name: ${CADDY_NETWORK:-caddy}
+  blog-net:
+    # Created by this file. Attach Caddy once: docker network connect blog-net <caddy-container>
+    # (or list blog-net as an external network in Caddy's own compose file).
+    name: ${BLOG_NETWORK:-blog-net}
+    internal: true

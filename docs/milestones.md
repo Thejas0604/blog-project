@@ -6,12 +6,13 @@ One section per phase of `/PLAN.md`. A phase is "done" only when its "Done when"
 |---|---|---|
 | 0 | API contract | done |
 | 1 | SQLite backend | done |
-| 2 | Backend tests | skipped by owner for now |
+| 2 | Backend tests | skipped by owner for now (17 security tests exist from the 2026-10-11 hardening pass; the Phase 2 coverage list is not complete) |
 | 3 | Frontend trim and wiring | built, build verified; UI click-through not done (not done) |
 | 4 | Containerize | done (checked on Docker 29.8.1 with the dev override; Caddy and droplet not covered) |
 | 5 | Deploy on the droplet | not started |
 | 6 | Optional additions | not started |
 | 7 | Markdown editor and image uploads | in progress (backend done and curl-verified; frontend built; container upload persistence seen; UI click-through not done) |
+| - | Security hardening pass (2026-10-11) | tests, compose config and image build/health seen or reported passing; browser CSP, Windows file modes, real Caddy/HSTS unverified; final re-audit done, no Critical/High/Medium, N1 and N2 (Low) open (see [below](#security-hardening-pass-2026-10-11)) |
 
 ## Phase 0: API contract
 
@@ -48,7 +49,7 @@ One section per phase of `/PLAN.md`. A phase is "done" only when its "Done when"
   - Backup: two runs wrote two files in `<DB dir>/backups`; opening one read-only showed the admin row and `integrity_check: ok`.
   - Deleting a category kept its posts (category became `null`).
   - Not run by me: "restarting keeps the data" with a server restart (I confirmed the data is in the on-disk file via the separate backup process), the 14-file pruning (read in code only), and the Phase 1 "no MongoDB installed" check beyond the fact that no Mongo dependency is in `package.json`.
-- Known gaps: no automated tests (Phase 2 skipped). Rate limit is lost on restart and keyed on `req.ip`, so it is only correct behind a single trusted proxy (`trust proxy` = 1). Logout and password changes do not revoke tokens. Backups sit on the same volume as the database. (Static serving and the SPA fallback were added in Phase 4.) PLAN.md's status-code list omits 413, 415 and 429, and its category `PUT` row does not mention partial updates (reported, PLAN.md not edited).
+- Known gaps (as of 2026-10-05; the security pass of 2026-10-11 changed several, see [that section](#security-hardening-pass-2026-10-11)): no automated tests (Phase 2 skipped). Rate limit is lost on restart and keyed on `req.ip`, so it is only correct behind a single trusted proxy (`trust proxy` = 1). Logout and password changes do not revoke tokens (logout now does). Backups sit on the same volume as the database. (Static serving and the SPA fallback were added in Phase 4.) PLAN.md's status-code list omits 413, 415 and 429, and its category `PUT` row does not mention partial updates (reported, PLAN.md not edited).
 
 ## Phase 2: Backend tests
 
@@ -93,6 +94,7 @@ One section per phase of `/PLAN.md`. A phase is "done" only when its "Done when"
   - A PNG upload and its fetch worked in the container, with `nosniff` and CSP headers.
   - Idle memory about 20 MiB of the 300 MiB limit.
   - Both compose files merged correctly with `docker compose config` on Compose v5.5.1.
+- Superseded 2026-10-11: the external `caddy` network and `CADDY_NETWORK` were replaced by the private internal `blog-net` (see the security pass section).
 - Not verified: `docker compose up` with the base file and a real external Caddy network; the `CADDY_NETWORK` override; `stop`/`restart`; the `Secure` cookie over plain `http://localhost` in a browser; the 14-file backup pruning; behavior on a Linux host or the droplet.
 - Known gaps:
   - Vulnerability reduction from moving `node:20-slim` to `node:22-slim` is unmeasured: `docker scout` needs a login and no other scanner was available. Node 20 is end of life, which is the reason for the move.
@@ -145,6 +147,30 @@ One section per phase of `/PLAN.md`. A phase is "done" only when its "Done when"
 - Verification: `npm run build` passes; `robots.txt` lands in `dist/` and is served as `text/plain`; `GET /login` returns the SPA `index.html`; unauthenticated post create/update/delete, category create/update/delete, upload and `GET /user/profile` all return 401 (commands in [testing.md](testing.md#31-logged-out-read-only-checks)).
 - Known gaps: no browser check; `robots.txt` on the droplet not checked; robots.txt does not strictly prevent indexing (a `noindex` meta on Login is not done). Later, owner's choice: Caddy IP allowlist or basicauth on the login endpoint; a separate admin build.
 
+## Security hardening pass (2026-10-11)
+
+- Status: done for the checks listed under "Seen" below; the re-audit is complete (see below) and several checks are unverified (listed). This is not a PLAN.md phase. The changes were uncommitted on branch `feat/deployment-plan` when documented; there is no commit to cite.
+- Built (read from `git diff`; first-audit IDs in brackets, details in [security.md](security.md)):
+  - Login limiter: per-client key with IPv6 grouped by /64 [L2], a global cap of 100 failures per 15 minutes that blocks everyone (later: except clients with a login in the last 24 hours, M-A) [L2], and `TRUST_PROXY` (default 1; number or IP/subnet string) instead of a hard-coded value [M1].
+  - Security headers in `app.js` (CSP, `nosniff`, `Referrer-Policy`, `X-Frame-Options`, `X-Powered-By` off) and HSTS in `Caddyfile.snippet` [L1].
+  - `users.token_version` column (with migration for existing databases); JWT carries `tv`; logout bumps the version and now requires `application/json` [L3, L10].
+  - `requireAdmin` on all writes (posts, categories, uploads) [L4].
+  - `src/env.js`: only `development` and `test` are non-production; `JWT_SECRET` must be 32+ characters and not a placeholder otherwise (later also 8+ distinct characters, I-G) [L5, L6].
+  - `backup.js`: directory 0700, files 0600 [L7]. `createAdmin.js`: password only from `ADMIN_PASSWORD` or a hidden prompt [L8]. `uploadDir.js`: `UPLOAD_DIR` may not contain the DB or its directory [I2].
+  - Container: `HEALTHCHECK`, `cap_drop: [ALL]`, `no-new-privileges`, and a private `internal: true` network `blog-net` (override `BLOG_NETWORK`) replacing the external `caddy` network and `CADDY_NETWORK` [I3].
+  - Tests: `npm test` in `backend/` (`node --test`, `supertest` devDependency); `frontend/src/services/authAPI.js` now posts `{}` to logout so the JSON check passes.
+- Changed from plan: not in PLAN.md. The Caddy attachment step is new (`docker network connect blog-net <caddy-container>`). Not changed, by decision: image metadata stripping [L9], CSRF origin check [I1].
+- Seen (docs pass, 2026-10-11): `npm test` in `backend/` ran 15 tests, 15 pass, 0 fail (17 after fix pass 2, below). The diff was read in full.
+- Reported by the developer, not re-run by the docs pass: `docker compose config` valid, image builds, container reaches healthy.
+- Unverified: CSP against the real frontend in a browser (it may block something); 0600/0700 modes (written on Windows, which ignores them; Linux not checked); HSTS and Caddy attachment to `blog-net` with a real Caddy; the `docker compose exec -e ADMIN_PASSWORD` form; the image build with `--ignore-scripts` [I4] was reported OK, not re-run; behavior of the dev override with `blog-net`.
+- Re-audit (2026-10-11): by code reading plus `npm test` (15 pass, also seen by the docs pass); Docker, Caddy and a browser were not exercised. No Critical or High. All 11 in-scope prior findings (M1, L1 to L8, L10, I2, I3) Closed, L1/L5/L6/L7/I2 with small residuals; L9, I1, I4, I5 accepted. Details in [security.md](security.md#re-audit-result).
+- Fix pass 2 (2026-10-11, uncommitted; read from the code, `npm test` 17 of 17 pass seen by the docs pass; not re-audited): M-A global cap kept but clients with a successful login in the last 24 hours are exempt (in memory, lost on restart); L-A backup writes `.tmp` (0600) and renames on success, removes it on failure, retention ignores `.tmp` and zero-size files; L-B CSP gained `base-uri 'self'; form-action 'self'; object-src 'none'`; L-C HSTS has `includeSubDomains`; L-D `docker-compose.yml` forces `NODE_ENV: production` (beats `env_file`) and `docker-compose.dev.yml` sets `development`; L-E `uploadDir.js` refuses `UPLOAD_DIR` equal to or inside `<dbdir>/backups`; I-E tests for the production `Secure` cookie and an independent global-limit test; I-G production `JWT_SECRET` needs at least 8 distinct characters. Details in [security.md](security.md#fix-pass-2-2026-10-11).
+- Final re-audit (2026-10-11, after fix pass 2; code reading plus `npm test` 17 of 17, also seen by the docs pass; Docker, Caddy, browser and Linux modes not exercised): no Critical, High or Medium. Closed: M-A, L-A to L-E, I-E, I-G; no regression in M1, L1 to L8, L10, I2, I3. M-A confirmed: a client enters the known-good map only after a successful bcrypt check, the per-client cap of 10 still applies, a restart loses the exemption (accepted).
+- Open after the final re-audit (not fixed): N1 (Low, `app.js:32` `startsWith('/uploads')` skips security headers for `/uploadsx`); N2 (Low/Info, dev override: non-Secure cookie, CORS `*` without `CLIENT_ORIGIN`, spoofable `X-Forwarded-For`, shares the production volume name, needs Compose 2.24+); informational I-H to I-N (backup tmp race, stale `.tmp` never pruned, backups dir mode only on creation, `uploadDir` guard symlink/`..x` edge cases, `TRUST_PROXY` default fail-open, known-good scope, test gaps). Still open from before: I-A to I-D; accepted: I-F, L9, I1, I4, I5. Order of work: [security.md next actions](security.md#next-actions).
+- Unverified after fix pass 2: 0600 on Linux, the failed-backup cleanup path, `NODE_ENV` in the running container, HSTS through real Caddy, CSP in a browser. The developer reported the image build and `docker compose config` OK (not re-run by the docs pass).
+- Changed from plan: the dev override now runs the container with `NODE_ENV=development`, so a local container test gets a non-Secure cookie and works over `http://localhost`.
+- Known gaps: N1, N2 and I-H to I-N above; after a restart during an attack the owner can be locked out of login until the 15 minute window ends (M-A residual); a password reset does not bump `token_version`; accepted risks L9 and I1.
+
 ## Known gaps / next steps
 
 1. Phase 4 follow-ups: measure image vulnerabilities (needs a scanner or a `docker scout` login), and run the Caddy network, `stop`/`restart` and backup pruning checks.
@@ -152,7 +178,8 @@ One section per phase of `/PLAN.md`. A phase is "done" only when its "Done when"
 3. Lint cleanliness: `npm run lint` in `frontend/` reported 35 errors and 1 warning before Phase 7; the developer reports 42 errors after it (not re-run by the docs pass).
 4. Restart-persistence check outside Docker (Phase 1 gap). The container check on the committed image is done.
 5. Backup pruning (keep 14) has been read in code only; run it in a container, for example by running the script 15 times with different timestamps.
-6. Phase 2 backend tests are skipped.
-7. Phase 5 on the droplet: Caddy network name, swap for the build, cron, off-droplet backup copy, real restore.
+6. Phase 2 backend tests are skipped; only the 17 security tests exist.
+7. Phase 5 on the droplet: attach Caddy to `blog-net`, swap for the build, cron, off-droplet backup copy, real restore.
 8. Phase 7: click through the editor in a browser (toolbar, paste, drag-drop, picker, failure flow, preview, Save during upload, images on the post page), then the other unverified items listed under Phase 7 (Caddy, JPEG/GIF/WebP uploads).
 9. Documentation upkeep: the 413/415/429 status codes and the partial `PUT /category/:id` are still missing from PLAN.md (reported, not edited).
+10. Security: fix N1 and N2, then I-H/I-I and I-K ([security.md](security.md#next-actions)); browser check of the CSP; confirm HSTS, `NODE_ENV` in the container, backup modes on Linux and `blog-net` with real Caddy.

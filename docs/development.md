@@ -17,9 +17,9 @@ npm run dev              # node --watch src/index.js
 npm start                # node src/index.js
 ```
 
-The server refuses to start without `JWT_SECRET` (`JWT_SECRET is not set`). For development, any non-empty value works, for example `JWT_SECRET=change-me`. In production it must be at least 32 characters.
+The server refuses to start without `JWT_SECRET` (`JWT_SECRET is not set`). For local development (`NODE_ENV=development`, as in `backend/.env.example`, or `test`) any non-empty value works, for example `JWT_SECRET=change-me`. With any other `NODE_ENV`, including unset, the secret must be at least 32 characters and must have at least 8 distinct characters and must not look like a placeholder (`change-me`, `secret`, `password`, `jwt-secret`, `your-` prefixes are rejected). Generate one with `openssl rand -hex 32`.
 
-Create the admin (CLI args, or no args for an interactive prompt; password at least 12 characters; does nothing if an admin already exists):
+Create the admin (username and email as arguments or prompted; the password comes from `ADMIN_PASSWORD` or a hidden prompt, never from an argument; at least 12 characters; does nothing if an admin already exists):
 
 ```sh
 node src/scripts/createAdmin.js
@@ -50,11 +50,13 @@ From `backend/.env.example`:
 | Variable | Purpose | Notes |
 |---|---|---|
 | `PORT` | Listen port | Default 3000. |
-| `JWT_SECRET` | Signs JWTs | Required in every environment (empty in the example file, so you must fill it). At least 32 characters when `NODE_ENV=production`. Generate with `openssl rand -hex 32`. Never commit real values. |
+| `JWT_SECRET` | Signs JWTs | Required in every environment (empty in the example file, so you must fill it). Unless `NODE_ENV` is `development` or `test`: at least 32 characters, at least 8 distinct characters, and not a placeholder. Generate with `openssl rand -hex 32`. Never commit real values. |
 | `DB_PATH` | SQLite file | Default `./data/blog.db`, resolved against `backend/`; the directory is created. `:memory:` is allowed by `db.js` (no persistence). |
-| `UPLOAD_DIR` | Where uploaded images are stored | Optional, commented out in the example. Default `uploads/` next to the DB file (`backend/data/uploads` locally, `/app/data/uploads` in the container). A relative value resolves against `backend/`. With `DB_PATH=:memory:` and no `UPLOAD_DIR`, a temp directory is used. |
-| `CLIENT_ORIGIN` | Allowed CORS origin in dev | `cors` is loaded only when `NODE_ENV` is not `production`. Example `http://localhost:5173`. |
-| `NODE_ENV` | `production` makes the cookie `Secure`, disables CORS, enforces the 32 character secret | The example file uses `development`. |
+| `UPLOAD_DIR` | Where uploaded images are stored | Optional, commented out in the example. Must not contain the DB directory, and must not be or lie inside `<DB dir>/backups` (the server refuses to start). Default `uploads/` next to the DB file (`backend/data/uploads` locally, `/app/data/uploads` in the container). A relative value resolves against `backend/`. With `DB_PATH=:memory:` and no `UPLOAD_DIR`, a temp directory is used. |
+| `TRUST_PROXY` | Express `trust proxy` | Optional, default `1` (one hop, Caddy). A number of hops, or an IP/subnet string such as `172.18.0.0/16`. Use `0` when nothing proxies the app, so `X-Forwarded-For` is ignored. |
+| `CLIENT_ORIGIN` | Allowed CORS origin in dev | `cors` is loaded only when `NODE_ENV` is `development` or `test`. Example `http://localhost:5173`. |
+| `NODE_ENV` | Only `development` and `test` are non-production: anything else (including unset) makes the cookie `Secure`, disables CORS and enforces the secret checks | The example file uses `development`. In Docker Compose it is set by the compose files, not by `.env`: `production` in `docker-compose.yml` (wins over `env_file`), `development` in `docker-compose.dev.yml`. |
+| `ADMIN_PASSWORD` | Password for `createAdmin.js` | Read only by that script; leave unset to get a hidden prompt. Not for `.env`. |
 
 No admin credentials belong in `.env`. Local `data/` (database, backups, uploads), `*.db*` and `.env` are git-ignored in `backend/.gitignore`.
 
@@ -100,10 +102,11 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 curl http://localhost:3000/health
 ```
 
-- Do not copy `backend/.env.example` to the root: it sets `NODE_ENV=development` and `DB_PATH=./data/blog.db`, which would override the image's `production` and `/app/data/blog.db`.
-- `docker-compose.dev.yml` is for local testing only: it publishes `127.0.0.1:3000` and replaces the external Caddy network with the default one. It needs Compose v2.24 or newer (`!override` and `!reset`; verified on Compose v5.5.1). Without it, `docker-compose.yml` is expected to fail because the external `caddy` network does not exist locally (not run).
-- The image serves the built frontend and the API on port 3000. With `NODE_ENV=production` the cookie is `Secure`; browsers accept it on `http://localhost`, but this was not tried in a browser.
-- Create the admin: `docker compose -f docker-compose.yml -f docker-compose.dev.yml exec -it blog node src/scripts/createAdmin.js`.
+- Do not copy `backend/.env.example` to the root: its `DB_PATH=./data/blog.db` would override the image's `/app/data/blog.db`. `NODE_ENV` in `.env` is ignored for the `blog` service because the compose files set it explicitly.
+- `docker-compose.yml` forces `NODE_ENV=production` (secure cookie, no CORS, strict secret checks). `docker-compose.dev.yml` sets `NODE_ENV=development`, so the dev container uses a non-Secure cookie, CORS (with `CLIENT_ORIGIN`) and relaxed `JWT_SECRET` checks. **Never use the dev file on the server.** What it changes (read from the files; final-audit finding N2 in [security.md](security.md#n2-docker-composedevyml-is-unsafe-outside-a-local-machine), open): non-Secure cookie and skipped `JWT_SECRET` checks; with `CLIENT_ORIGIN` unset, CORS answers `Access-Control-Allow-Origin: *` (so any site can read the public GET API of that instance); `TRUST_PROXY` stays `1` with no proxy, so `X-Forwarded-For` can be spoofed to dodge the login limiter; and it does not rename the project or volume, so in the same directory as the production stack it would mount the production `blog-data` volume. Set `CLIENT_ORIGIN` in `.env` for local use. Read from the compose files; the running container's value was not checked by the docs pass (unverified).
+- `docker-compose.dev.yml` is for local testing only: it publishes `127.0.0.1:3000` and resets the private `blog-net` network so the service uses the default one. It needs Compose v2.24 or newer (`!override` and `!reset`; verified on Compose v5.5.1 before the rename to `blog-net`; `docker compose config` on the new files was reported by the developer). Without it, `docker-compose.yml` creates the internal `blog-net` network (no outbound internet, no published port), so the app is unreachable from the host (not run).
+- The image serves the built frontend and the API on port 3000. With the base compose file alone (`NODE_ENV=production`) the cookie is `Secure`; with the dev override it is not, so login works over `http://localhost:3000` (not tried in a browser).
+- Create the admin: `docker compose -f docker-compose.yml -f docker-compose.dev.yml exec -it blog node src/scripts/createAdmin.js` (hidden password prompt).
 - Sample data (local only): `docker compose -f docker-compose.yml -f docker-compose.dev.yml exec blog npm run seed` (or `node src/scripts/seed.js`), after creating the admin. Rebuild with `up --build` first so the image includes the script. Verified 2026-10-11 in a throwaway container (admin created, seed added 5 categories and 14 posts, second run added 0, `npm run seed` works, `/api/v1/posts` and `/api/v1/category` returned the data).
 - The Dockerfile installs with `npm ci --omit=dev --ignore-scripts` (see [milestones.md](milestones.md#phase-4-containerize)). On Windows Git Bash, paths like `/app/data` passed to `docker compose exec` are rewritten; wrap the command in `sh -c '...'`.
 
@@ -111,7 +114,15 @@ curl http://localhost:3000/health
 
 Manual, step-by-step checks for the whole app (not yet run) are in [testing.md](testing.md).
 
-Phase 2 is skipped for now. `backend/package.json` has no `test` script, so `npm test` does not exist. Phase 1 was verified by manual `curl` runs (see [milestones.md](milestones.md#phase-1-sqlite-backend-backend)). Planned: `node --test` with `supertest` and `DB_PATH=:memory:`.
+Automated backend tests (added in the 2026-10-11 security pass; 17 tests, all passing when run by the docs pass):
+
+```sh
+cd backend
+npm install     # supertest is a devDependency
+npm test        # node --test "test/*.test.js"
+```
+
+They use `node:test` and `supertest` with `DB_PATH=:memory:` and `NODE_ENV=test` (`test/helpers.js` sets this before loading the app). Files: `auth.test.js` (requireAdmin, logout revocation, headers, `Secure` cookie off in test and on in production), `limiter.test.js` (per-IP, IPv6 /64, global cap with the known-good exemption), `trustProxy.test.js`, `config.test.js` (`JWT_SECRET` checks including the distinct-character rule, migration, `UPLOAD_DIR` guard including the backups directory). They cover security behavior only, not the full API; the Phase 2 coverage list is still mostly manual. The frontend has no tests. Security review process: [security.md](security.md).
 
 ## Project layout (`backend/`)
 
@@ -121,10 +132,12 @@ src/app.js                 express app, middleware order, error handler, /health
 src/db.js                  better-sqlite3 connection, pragmas, schema, SIGTERM close; resolves DB_PATH and .env against backend/
 src/uploadDir.js           resolves and creates the uploads directory
 src/serialize.js           DB row to API shape (_id, categoryName, ...)
-src/middleware/auth.js     requireAuth, cookie helpers, fail(status, message)
+src/env.js                 isDevLike(): true only for NODE_ENV development or test
+src/middleware/auth.js     requireAuth, requireAdmin, userFromCookie, cookie helpers, fail(status, message)
 src/middleware/http.js     requireJson (415), parseId (positive integer or null)
 src/routes/                user.js (login, logout, profile, rate limit), posts.js, categories.js, uploads.js (raw image upload)
 src/scripts/               createAdmin.js, backup.js, seed.js (test data only)
+test/                      node:test + supertest tests (npm test)
 ```
 
 Other top-level items:
@@ -134,7 +147,7 @@ frontend/                  React app (Vite). src/App.jsx routes, src/context/Aut
                            src/utils/axiosInstance.js, src/services/*API.js (incl. uploadsAPI.js), src/components/{auth,posts,categories,navbar,home}
                            posts/ holds MarkdownEditor.jsx, markdownActions.js, PostContent.jsx
 Dockerfile                 stage 1 builds frontend, stage 2 runs backend with the build in public/
-docker-compose.yml         service `blog`, volume `blog-data`, external Caddy network
+docker-compose.yml         service `blog`, volume `blog-data`, private internal network `blog-net`, cap_drop ALL, no-new-privileges
 docker-compose.dev.yml     local override: publishes 127.0.0.1:3000
 .dockerignore, .env.example (root; used by compose), Caddyfile.snippet
 ```
@@ -147,7 +160,7 @@ docker-compose.dev.yml     local override: publishes 127.0.0.1:3000
 - API field names are Mongo-style (`_id`, `categoryName`); do not rename them in the frontend. Map them only in `serialize.js`.
 - Set `updated_at` explicitly on every UPDATE (no trigger).
 - Errors: throw `fail(status, message)` (from `middleware/auth.js`); the error handler in `app.js` returns `{ status: "fail", message }`. 500s are logged and return a generic message.
-- Writes use `requireAuth` then `requireJson`; URL ids go through `parseId` so bad ids are 404.
+- Writes use `requireAuth`, `requireAdmin`, then `requireJson`; URL ids go through `parseId` so bad ids are 404.
 - Never commit secrets; `.env` stays in `.gitignore`.
 - One commit per phase.
 - Frontend: call the API only through `src/services/*` and `axiosInstance`; do not store tokens or user data in `localStorage`; keep API field names as the server returns them.

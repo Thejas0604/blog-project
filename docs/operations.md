@@ -6,7 +6,9 @@ Verification status (2026-10-05): the Node scripts and server behavior were run 
 
 Uploads (Phase 7, backend): verified locally with `curl`; in a container the developer saw a PNG upload, fetch and persistence across `down` then `up -d`. Linux and Caddy: unverified.
 
-Compose reads `.env` in the project root (copy the root `.env.example`, not `backend/.env.example`). On the droplet the commands are plain `docker compose ...`. For a local test add `-f docker-compose.yml -f docker-compose.dev.yml` (see [development.md](development.md#docker-local)).
+Security hardening pass (2026-10-11, uncommitted when documented): the changes described below that came from it (private `blog-net`, `HEALTHCHECK`, `cap_drop`, token revocation, lockout, backup modes, `createAdmin` password handling) were read from the diff; the backend tests (17 after fix pass 2) were seen to pass by the docs pass. See [security.md](security.md).
+
+Compose reads `.env` in the project root (copy the root `.env.example`, not `backend/.env.example`). On the droplet the commands are plain `docker compose ...`. For a local test add `-f docker-compose.yml -f docker-compose.dev.yml` (see [development.md](development.md#docker-local)). Never add the dev file on the droplet: it runs the app in development mode and would use the same `blog-data` volume ([deploy.md](deploy.md#never-use-the-dev-override-on-the-server)).
 
 ## Start, stop, restart, update
 
@@ -31,7 +33,7 @@ docker compose logs -f --tail=100 blog
 curl -s https://blog.<domain>/health         # expected: {"status":"ok"}
 ```
 
-`/health` only shows the process is up; it does not query the database. Locally (verified): `curl -s http://localhost:3000/health` returns `{"status":"ok"}`.
+`/health` only shows the process is up; it does not query the database. The image also has a Docker `HEALTHCHECK` (fetches `http://127.0.0.1:<PORT>/health` every 30 s, 5 s timeout, 15 s start period, 3 retries); `docker compose ps` shows `(healthy)` or `(unhealthy)` (the developer reported the container reaching healthy; not re-run by the docs pass). Locally (verified): `curl -s http://localhost:3000/health` returns `{"status":"ok"}`.
 
 Log content (seen in a container): startup prints `BlogMe Lite listening on port <PORT>`; unexpected 500 errors print the stack. Failed logins and 4xx errors are not logged. Scripts also print a dotenv line such as `injected env (0) from .env`; it is harmless.
 
@@ -42,10 +44,15 @@ Scripts and the server open the same database from any directory: a relative `DB
 Create (verified locally; interactive, password at least 12 characters, never stored in `.env`):
 
 ```sh
-docker compose exec -it blog node src/scripts/createAdmin.js     # the non-interactive form was run in a container; it prints: Admin "admin" created.
+docker compose exec -it blog node src/scripts/createAdmin.js                 # prompts for username, email, hidden password
+docker compose exec -it blog node src/scripts/createAdmin.js <username> <email>   # prompts for the password only
+# non-interactive: password from the environment
+docker compose exec -T -e ADMIN_PASSWORD='<12+ chars>' blog node src/scripts/createAdmin.js <username> <email>
+# local, from backend/:
+ADMIN_PASSWORD='<12+ chars>' node src/scripts/createAdmin.js <username> <email>
 ```
 
-The script also takes `node src/scripts/createAdmin.js <username> <email> <password>`, but that puts the password in shell history; prefer the prompt. A password under 12 characters exits with code 1 (`Password must be at least 12 characters`). If any admin exists it prints `An admin already exists; nothing to do.` and changes nothing (exit code 0). It cannot create a second admin and cannot reset a password.
+It prints `Admin "<username>" created.` on success (seen in a container before the hardening change). The password is no longer accepted as a command-line argument (it would land in shell history and the process list); a third argument is ignored. Setting `ADMIN_PASSWORD` inline still lands in shell history; use the hidden prompt when that matters. A password under 12 characters exits with code 1 (`Password must be at least 12 characters`). If any admin exists it prints `An admin already exists; nothing to do.` and changes nothing (exit code 0). It cannot create a second admin and cannot reset a password.
 
 Warning: `src/scripts/seed.js` adds sample categories and posts for local testing. It does not check `NODE_ENV`, so do not run it in production or on the droplet. It never deletes anything, but it would put test posts on the live blog. See [development.md](development.md).
 
@@ -73,11 +80,11 @@ docker compose exec -e NEWPW blog node -e "<same script as above>"
 unset NEWPW
 ```
 
-Existing sessions are not ended by a password change: a token carries only the user id, so a stolen cookie stays valid up to 7 days. To end all sessions, also [rotate `JWT_SECRET`](#rotate-jwt_secret).
+A password change does not bump `users.token_version`, so existing sessions stay valid (up to 7 days). To end them, [rotate `JWT_SECRET`](#rotate-jwt_secret), or log out from the app (logout revokes every token for that user).
 
 ## Rotate `JWT_SECRET`
 
-`JWT_SECRET` is required in every environment: the server refuses to start (`JWT_SECRET is not set`) if it is empty, and in production also if it is shorter than 32 characters (both verified). The scripts (`createAdmin.js`, `backup.js`, `seed.js`) do not need it (`seed.js` unverified on this point beyond reading that it only requires `../db`).
+`JWT_SECRET` is required in every environment: the server refuses to start (`JWT_SECRET is not set`) if it is empty. Unless `NODE_ENV` is `development` or `test` (unset counts as production), it must also be at least 32 characters, have at least 8 distinct characters, and must not start with a placeholder such as `change-me`, `secret`, `password`, `jwt-secret` or `your-` (covered by a test). The scripts (`createAdmin.js`, `backup.js`, `seed.js`) do not need it (`seed.js` unverified on this point beyond reading that it only requires `../db`).
 
 1. Generate: `openssl rand -hex 32`
 2. Edit `.env` on the server (`JWT_SECRET=<new value>`).
@@ -91,9 +98,9 @@ Effect: every existing token fails verification, so all sessions end and the own
 docker compose exec -T blog node src/scripts/backup.js
 ```
 
-Behavior (verified locally): uses better-sqlite3 `db.backup()`, which is safe on a live WAL database. It writes `blog-YYYYMMDD-HHMMSS.db` (UTC) into a `backups` folder next to the database file, i.e. `<DB dir>/backups`. In the container (`DB_PATH=/app/data/blog.db`) it wrote `/app/data/backups/blog-<stamp>.db`, inside the `blog-data` volume (seen). The image has no `sqlite3` CLI (checked); use the Node commands in this file. It prints `Backup written: <path>`, then deletes all but the newest 14 files matching `blog-*.db` (sorted by name). Exit code 1 and the error message if the backup fails. Two backups within the same second would collide on the name; cron does not do that.
+Behavior: the backups directory is created with mode 0700 and each backup with 0600 (set in code; not checked on a Linux host, and modes do nothing on Windows). Uses better-sqlite3 `db.backup()`, which is safe on a live WAL database. It first writes `blog-YYYYMMDD-HHMMSS.db.tmp` (UTC; created 0600) and renames it to `blog-YYYYMMDD-HHMMSS.db` only when the backup succeeds, in a `backups` folder next to the database file, i.e. `<DB dir>/backups`. In the container (`DB_PATH=/app/data/blog.db`) it wrote `/app/data/backups/blog-<stamp>.db`, inside the `blog-data` volume (seen). The image has no `sqlite3` CLI (checked); use the Node commands in this file. It prints `Backup written: <path>`, then deletes all but the newest 14 files matching `blog-*.db` (sorted by name). Retention ignores `.tmp` files and zero-size files, so neither counts toward the 14. If the backup fails, the script removes the `.tmp` file, prints the error and exits with code 1, so cron sees the failure and no partial `blog-*.db` is left (read from the code; the failure path was not run, unverified). A stale `.tmp` can remain only if the process is killed mid-backup; delete it by hand. Two backups within the same second would collide on the name; cron does not do that.
 
-`backup.js` backs up the database only. It does not copy `uploads/`.
+`backup.js` backs up the database only. It does not copy `uploads/`. `UPLOAD_DIR` must not be `<DB dir>/backups` or inside it: `/uploads` is served publicly, and backups contain password hashes. The server refuses to start with such a value (test: `uploadDir refuses the backups directory and anything inside it`).
 
 **The backup unit is the whole `blog-data` volume**: `blog.db`, `backups/` (database snapshots) and `uploads/` (images), all under `/app/data` in the container. Copy both `backups/` and `uploads/` off the droplet. Uploaded files are immutable (random names, never overwritten), so `rsync` only transfers new ones. The backups live on the same volume and disk as the database; they protect against corruption and mistakes, not against losing the droplet (see [deploy.md](deploy.md#nightly-backup-cron)).
 
@@ -113,6 +120,8 @@ Things to know about uploads:
 
 - Orphans are never deleted: an image stays on disk after the post that used it is edited or deleted, or if an upload was abandoned. There is no cleanup script (a possible later addition).
 - Images are public to anyone who has the URL (`/uploads/<uuid>.<ext>`), and the server keeps EXIF data such as GPS location. Strip it before uploading photos.
+
+Backup caveats (open findings I-H, I-I in [security.md](security.md#informational-final-re-audit)): do not run two backups in the same second (for example cron and a manual run at once), because both use the same temp file name and one backup can be lost. If a backup process was killed, a stale `backups/blog-*.db.tmp` can remain; nothing prunes it, so check with `ls -l` and delete old `.tmp` files by hand (each is a full database copy).
 
 Verify a backup: list the folder, then open the newest file read-only and run an integrity check (run locally; output was `ok`):
 
@@ -150,16 +159,28 @@ The compose file sets `mem_limit: 300m`. In a test container `docker stats --no-
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | Container or `npm start` exits with `JWT_SECRET is not set` | Empty or missing `JWT_SECRET` (needed in all environments) | Set it in `.env`, recreate. |
-| Exits with `JWT_SECRET must be at least 32 characters in production` | Short secret with `NODE_ENV=production` | Use `openssl rand -hex 32`. |
+| Exits with `JWT_SECRET must be at least 32 characters outside development` | Short secret and `NODE_ENV` is not `development`/`test` (the base compose file always sets `production`) | Use `openssl rand -hex 32`. |
+| Exits with `JWT_SECRET has too few distinct characters` | Secret has fewer than 8 distinct characters (for example a repeated pattern) | Use `openssl rand -hex 32`. |
+| Exits with `JWT_SECRET looks like a placeholder` | Secret starts with `change-me`, `secret`, `password`, `jwt-secret` or `your-` | Use `openssl rand -hex 32`. |
+| Exits with `UPLOAD_DIR must not contain the database file or its directory` | `UPLOAD_DIR` points at (or above) the DB directory, which would publish `blog.db` under `/uploads` | Unset it or point it at a separate directory. |
+| Exits with `UPLOAD_DIR must not be the backups directory or inside it` | `UPLOAD_DIR` is `<DB dir>/backups` or below, which would publish database copies under `/uploads` | Unset it or point it at a separate directory. |
 | Cannot write DB / `SQLITE_CANTOPEN` | `/app/data` not owned by `node` user | Check volume ownership: `docker compose exec blog sh -c 'ls -ld /app/data'` should show `node node` (seen on a fresh volume). |
-| `docker compose up` says the external network `caddy` is not found | Caddy's network has another name, or you are running locally | Set `CADDY_NETWORK=<name>` in `.env` (find it with `docker network ls`), or add `-f docker-compose.dev.yml` locally. Not run. |
+| 502 from Caddy, container is up and healthy | Caddy is not attached to `blog-net` (or was recreated and lost the attachment) | `docker network inspect blog-net` should list Caddy; if not, `docker network connect blog-net <caddy-container>` or declare `blog-net` external in Caddy's compose. Not run on a droplet. |
+| `docker compose ps` shows `(unhealthy)` | `/health` is not answering inside the container | `docker compose logs --tail=100 blog`; check the process started. |
+| Blog container cannot reach the internet (for example `curl` inside it fails) | By design: `blog-net` is `internal` | Nothing in the app needs outbound access. Do not remove `internal` just to debug. |
 | `docker compose build` fails in `npm ci --omit=dev` with `node-gyp` / `find Python` | `better-sqlite3` ships prebuilt binaries but npm still runs `node-gyp rebuild`; the slim image has no Python or compiler | The Dockerfile already uses `npm ci --omit=dev --ignore-scripts`. If you see this error, the flag was removed: put it back and rebuild. See [milestones.md](milestones.md#phase-4-containerize). |
 | `/health` is fine but the site shows JSON `Not found` instead of the page | `public/index.html` missing in the image (frontend build not copied) | Rebuild the image; check `docker compose exec blog sh -c 'ls /app/public'`. |
-| 502 from Caddy | Container down or not on Caddy network | `docker compose ps`; check network name and alias `blog`. |
+| 502 from Caddy | Container down, or not on the same network as Caddy | `docker compose ps`; see the `blog-net` row above. |
 | Login works but next request is 401 | Cookie not sent, or `Secure` cookie over plain HTTP in production | Use HTTPS; check `NODE_ENV`. |
-| Everyone logged out | `JWT_SECRET` changed | Expected; log in again. |
+| Everyone logged out | `JWT_SECRET` changed, or someone used Logout (it revokes all tokens), or the first start after the hardening change (old tokens have no `tv` claim) | Expected; log in again. |
 | 401 `Not authenticated` after restoring an old backup | The admin row differs or was missing, so the token's user id no longer exists | Log in again; re-create the admin if there is none. |
-| 429 `Too many attempts` on login | 10 failed logins from the same IP in 15 minutes | Wait for the window to end, or restart the container (counter is in memory). If it is you behind Caddy, check `trust proxy` sees real client IPs. |
+| 429 `Too many attempts` on login | 10 failed logins from the same client (IPv6 counted per /64) in 15 minutes, or 100 failures from all clients together, which blocks every client except those with a successful login in the last 24 hours (see the next row) | Wait for the window to end, or restart the container (counters are in memory). If it is only you behind Caddy, check `TRUST_PROXY` so the app sees real client IPs. |
+| Admin cannot log in, correct password, 429 `Too many attempts` (finding M-A) | The global lockout: 100 failed logins from anyone in a 15-minute window block login for clients not exempt. A client (IPv4 address or IPv6 /64) with a successful login in the last 24 hours is exempt from the global cap, but the exemption list is in memory, so after a restart (or from a new address) you are not exempt and are locked out until the window ends. It may be an attack repeating every window. Only `/login` is blocked; the site and existing sessions keep working. | Wait up to 15 minutes. Restarting clears the counters but also the exemption, so if an attack is ongoing, restarting does not help: the attacker's failures refill the counter and you are no longer exempt. Check `docker compose logs blog` and Caddy access logs for the source IPs. The per-client cap of 10 still applies even when exempt. See [security.md](security.md#fix-pass-2-2026-10-11). |
+| 429 for everyone after only a few of your own failed logins | `req.ip` is not the real client (it is the Caddy container or Docker gateway), so all clients share one limiter key (finding I-A). Not checked on a droplet. | Check `TRUST_PROXY` (default `1` for one Caddy hop). To see what the app sees, make a failed login and compare the IP in Caddy's access log with the client you expect; if every request shows one internal address, fix the proxy hop count. Unverified procedure. |
+| Cookie has no `Secure` flag, or weak `JWT_SECRET` accepted, in production (finding L-D) | Should not happen with the current `docker-compose.yml`, which forces `NODE_ENV: production` over `env_file`. Likely: you started with `docker-compose.dev.yml` (sets `development`), or you run the image with plain `docker run` and a dev `NODE_ENV` | `docker compose exec blog printenv NODE_ENV` should print `production` (unverified); restart with only the base compose file: `docker compose up -d --force-recreate`. |
+| A path like `/uploadsx` returns the app page without security headers (finding N1, open) | The header middleware skips any path starting with `/uploads`; the SPA fallback then serves `index.html` | No operator fix yet; see [security.md N1](security.md#n1-security-headers-skipped-for-uploads-look-alike-paths). Real `/uploads/<name>` files are unaffected. |
+| 403 `Forbidden` on a create/update/delete/upload | The logged-in user's role is not `admin` | Use the admin account. |
+| 415 on `POST /user/logout` | Missing `Content-Type: application/json` | Send `-H 'Content-Type: application/json' -d '{}'`. |
 | 415 `Content-Type must be application/json` | Client sent a non-JSON body | Send `Content-Type: application/json`. |
 | 413 `request entity too large` | Body over 100 KB | Shorten the post. |
 | Upload returns 413 `Image too large (max 5 MB)` | File over 5 MB (or Caddy `request_body max_size 6MB`, if configured, rejecting it first; the Caddy line was not run) | Resize or compress the image. |

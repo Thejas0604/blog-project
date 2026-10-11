@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const uploadDir = require('../uploadDir');
-const { requireAuth, fail } = require('../middleware/auth');
+const { requireAuth, requireAdmin, fail } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -29,6 +29,7 @@ function sniff(buf) {
 router.post(
   '/',
   requireAuth,
+  requireAdmin,
   express.raw({ type: TYPES, limit: '5mb' }),
   (req, res, next) => {
     if (!Buffer.isBuffer(req.body) || req.body.length === 0) {

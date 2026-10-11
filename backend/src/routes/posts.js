@@ -1,7 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const serialize = require('../serialize');
-const { requireAuth, fail } = require('../middleware/auth');
+const { requireAuth, requireAdmin, fail } = require('../middleware/auth');
 const { requireJson, parseId } = require('../middleware/http');
 
 const router = express.Router();
@@ -59,7 +59,7 @@ router.get('/:id', (req, res) => {
   res.json({ status: 'success', message: 'Post fetched', postFound: serialize.post(row) });
 });
 
-router.post('/create', requireAuth, requireJson, (req, res) => {
+router.post('/create', requireAuth, requireAdmin, requireJson, (req, res) => {
   const input = readInput(req.body);
   const categoryId = input.hasCategory ? parseCategory(input.category) : null;
   const info = insert.run(input.title, input.content, categoryId, req.user.id);
@@ -70,7 +70,7 @@ router.post('/create', requireAuth, requireJson, (req, res) => {
   });
 });
 
-router.put('/:id', requireAuth, requireJson, (req, res) => {
+router.put('/:id', requireAuth, requireAdmin, requireJson, (req, res) => {
   const existing = loadOr404(req);
   const input = readInput(req.body);
   const categoryId = input.hasCategory ? parseCategory(input.category) : existing.category_id;
@@ -78,7 +78,7 @@ router.put('/:id', requireAuth, requireJson, (req, res) => {
   res.json({ status: 'success', message: 'Post updated', postUpdated: serialize.post(getOne.get(existing.id)) });
 });
 
-router.delete('/:id', requireAuth, (req, res) => {
+router.delete('/:id', requireAuth, requireAdmin, (req, res) => {
   const existing = loadOr404(req);
   remove.run(existing.id);
   res.json({ status: 'success', message: 'Post deleted', deletedPost: serialize.post(existing) });

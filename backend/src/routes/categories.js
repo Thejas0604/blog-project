@@ -1,7 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const serialize = require('../serialize');
-const { requireAuth, fail } = require('../middleware/auth');
+const { requireAuth, requireAdmin, fail } = require('../middleware/auth');
 const { requireJson, parseId } = require('../middleware/http');
 
 const router = express.Router();
@@ -63,14 +63,14 @@ router.get('/:id', (req, res) => {
   res.json({ status: 'success', message: 'Category fetched', categoryFound: serialize.category(row) });
 });
 
-router.post('/create', requireAuth, requireJson, (req, res) => {
+router.post('/create', requireAuth, requireAdmin, requireJson, (req, res) => {
   const { name, description } = readInput(req.body, null);
   const info = run(() => insert.run(name, description ?? null));
   const row = getOne.get(info.lastInsertRowid);
   res.status(201).json({ status: 'success', message: 'Category created', categoryCreated: serialize.category(row) });
 });
 
-router.put('/:id', requireAuth, requireJson, (req, res) => {
+router.put('/:id', requireAuth, requireAdmin, requireJson, (req, res) => {
   const existing = loadOr404(req);
   const { name, description } = readInput(req.body, existing);
   run(() => update.run(name, description, existing.id));
@@ -81,7 +81,7 @@ router.put('/:id', requireAuth, requireJson, (req, res) => {
   });
 });
 
-router.delete('/:id', requireAuth, (req, res) => {
+router.delete('/:id', requireAuth, requireAdmin, (req, res) => {
   const existing = loadOr404(req);
   remove.run(existing.id); // posts survive: the FK is ON DELETE SET NULL
   res.json({ status: 'success', message: 'Category deleted', deletedCategory: serialize.category(existing) });

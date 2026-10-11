@@ -10,11 +10,14 @@ The build plan is in [PLAN.md](PLAN.md). The original MongoDB backend was remove
 cd backend
 cp .env.example .env          # set JWT_SECRET (required)
 npm install
-node src/scripts/createAdmin.js
+node src/scripts/createAdmin.js   # hidden password prompt; or ADMIN_PASSWORD='...' node src/scripts/createAdmin.js <username> <email>
 npm run seed                  # optional sample posts (same as node src/scripts/seed.js); test data only, never in production
 npm run dev
 curl http://localhost:3000/health
+npm test                      # 17 backend security tests
 ```
+
+With `NODE_ENV=development` (as in `backend/.env.example`) any non-empty `JWT_SECRET` works; otherwise it must be 32+ characters, have 8+ distinct characters and not be a placeholder (`openssl rand -hex 32`).
 
 ## Quick start (frontend, local)
 
@@ -35,7 +38,7 @@ cp .env.example .env     # set JWT_SECRET; use the root file, not backend/.env.e
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build   # local test, port 3000
 ```
 
-Status: the `Dockerfile` uses `node:22-slim` in both stages and `npm ci --omit=dev --ignore-scripts`. The developer ran the container checks on it (Docker 29.8.1, dev override: build, `/health`, admin, login cookie, upload, backup, data kept across `down` then `up -d`). Not verified: Caddy, the droplet, a Linux host, image vulnerability counts. Open items are in [docs/milestones.md](docs/milestones.md#phase-4-containerize). The frontend was built and its login flow checked via `curl`, but not clicked through in a browser. The droplet deployment (Phase 5) has not started.
+Status: the `Dockerfile` uses `node:22-slim` in both stages and `npm ci --omit=dev --ignore-scripts`. The developer ran the container checks on it (Docker 29.8.1, dev override: build, `/health`, admin, login cookie, upload, backup, data kept across `down` then `up -d`). Not verified: Caddy, the droplet, a Linux host, image vulnerability counts. Open items are in [docs/milestones.md](docs/milestones.md#phase-4-containerize). The frontend was built and its login flow checked via `curl`, but not clicked through in a browser. The droplet deployment (Phase 5) has not started. The container sits on a private internal Docker network `blog-net`; Caddy must be attached to it (see [docs/deploy.md](docs/deploy.md#caddy-snippet)).
 
 ## Documentation
 
@@ -48,4 +51,5 @@ All docs are in [docs/](docs/README.md):
 - [Operations](docs/operations.md)
 - [Deploy](docs/deploy.md)
 - [Manual testing guide](docs/testing.md)
+- [Security testing and findings](docs/security.md)
 - [Milestones](docs/milestones.md)

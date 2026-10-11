@@ -1,5 +1,7 @@
-// Usage: node src/scripts/createAdmin.js <username> <email> <password>
-// or run with no args for an interactive prompt.
+// Usage: node src/scripts/createAdmin.js [username] [email]
+// The password is never taken from the command line (it would land in shell history and
+// the process list): set ADMIN_PASSWORD, or leave it unset for a hidden interactive prompt.
+// Missing username/email are also prompted for.
 const readline = require('readline');
 const bcrypt = require('bcryptjs');
 const db = require('../db');
@@ -22,7 +24,8 @@ function ask(question, hidden) {
 }
 
 async function main() {
-  let [username, email, password] = process.argv.slice(2);
+  let [username, email] = process.argv.slice(2);
+  let password = process.env.ADMIN_PASSWORD;
   if (!username) username = await ask('Username: ');
   if (!email) email = await ask('Email: ');
   if (!password) password = await ask('Password (min 12 chars): ', true);

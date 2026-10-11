@@ -1,6 +1,6 @@
 # Architecture
 
-Status (2026-10-05): backend verified against `backend/src` (Phase 1, Phase 7 uploads). Frontend read from `frontend/src` (Phases 3 and 7; build verified, browser click-through not done). Container verified by running a patched copy of the Dockerfile (see [milestones.md](milestones.md#phase-4-containerize)); the committed Dockerfile now builds (lead-confirmed; the full checks used an equivalent patched copy). Caddy and the droplet (Phase 5) are not started. Public read-only frontend change (2026-10-11): build and curl checks verified, no browser click-through.
+Status (2026-10-05): backend verified against `backend/src` (Phase 1, Phase 7 uploads). Frontend read from `frontend/src` (Phases 3 and 7; build verified, browser click-through not done). Container verified by running a patched copy of the Dockerfile (see [milestones.md](milestones.md#phase-4-containerize)); the committed Dockerfile now builds (lead-confirmed; the full checks used an equivalent patched copy). Caddy and the droplet (Phase 5) are not started. Public read-only frontend change (2026-10-11): build and curl checks verified, no browser click-through. Security hardening pass (2026-10-11, uncommitted when documented): read from the diff; 17 backend tests seen passing after fix pass 2; see [security.md](security.md).
 
 BlogMe Lite is a single-author blog: one Docker container (Express serving the API and the built React app) with one SQLite file on a volume, behind Caddy at `blog.<domain>`.
 
@@ -17,7 +17,7 @@ flowchart LR
 
 - `/api/v1/*` goes to the routers. Any other `/api/...` path gets a JSON 404 before the SPA fallback is reached.
 - If `public/index.html` exists (the Docker image copies the built frontend there), Express serves `public/` statically and answers every other GET with `index.html` so React Router handles the path. If it does not exist (local backend dev), this is skipped and unknown paths get the JSON 404. Verified in a container (`/` and `/posts/1` return HTML, `/api/v1/nope` returns JSON 404).
-- Middleware order in `app.js`: `cors` (non-production only), `express.json` (100 KB), `cookie-parser`, `/health`, the four routers (user, posts, category, uploads), `/api` 404, `/uploads` static, `public/` static + SPA fallback (only if built), final 404, error handler.
+- Middleware order in `app.js`: `cors` (only when `NODE_ENV` is `development` or `test`), security headers (everything except `/uploads`), `express.json` (100 KB), `cookie-parser`, `/health`, the four routers (user, posts, category, uploads), `/api` 404, `/uploads` static, `public/` static + SPA fallback (only if built), final 404, error handler.
 - The fallback is `GET *` only; other methods on unknown non-API paths get the JSON 404.
 - `GET /health` is outside `/api/v1`.
 
@@ -152,33 +152,37 @@ sequenceDiagram
   B->>S: POST /posts/create (cookie sent)
   S->>S: verify JWT, user id exists
   S-->>B: 201
-  B->>S: POST /user/logout
+  B->>S: POST /user/logout (Content-Type: application/json)
+  S->>S: token_version + 1 (all tokens revoked)
   S-->>B: 200 + cookie cleared
 ```
 
-- Failure of any kind on login returns a generic 401 `Invalid credentials`. After 10 failures from one IP in 15 minutes, further attempts get 429 (in memory; see [api/overview.md](api/overview.md#post-userlogin)).
-- The token is never in a response body. Cookie: `token`, HttpOnly, SameSite=Lax, 7 days, `Secure` when `NODE_ENV=production`.
-- `requireAuth` verifies the JWT (HS256 only), then checks the user id still exists in `users`. Missing or invalid cookie, or a deleted user: 401.
-- The JWT payload is only `sub` (user id); there is no role check.
-- Logout is stateless: it only clears the cookie. There is no server-side revocation (confirmed in code): a copied token stays valid until it expires or `JWT_SECRET` changes. A password change does not end sessions either.
+- Failure of any kind on login returns a generic 401 `Invalid credentials`. After 10 failures from one client (IPv6 keyed on its /64) in 15 minutes, or 100 failures from all clients together, further attempts get 429 (in memory; see [api/overview.md](api/overview.md#post-userlogin)).
+- The token is never in a response body. Cookie: `token`, HttpOnly, SameSite=Lax, 7 days, `Secure` unless `NODE_ENV` is `development` or `test` (so also when it is unset).
+- `requireAuth` verifies the JWT (HS256 only), loads the user, and requires the token's `tv` claim to equal `users.token_version`. Missing or invalid cookie, deleted user, or stale/missing `tv`: 401.
+- The JWT payload is `sub` (user id) and `tv` (token version). `requireAdmin` runs after `requireAuth` on every write route (posts, categories, uploads) and returns 403 `Forbidden` when `role` is not `admin`.
+- Logout revokes: it adds 1 to `users.token_version`, which invalidates every token issued before (all devices). It needs `Content-Type: application/json`. With no valid cookie it still clears the cookie and returns 200. Sessions that existed before this change carry no `tv` and are rejected: log in again.
+- A password change (the manual reset in [operations.md](operations.md#reset-the-admin-password)) does not bump `token_version`; rotate `JWT_SECRET` or log out to end sessions.
+- `db.js` adds the `token_version` column to an existing database at startup if it is missing (migration covered by a test).
 
 ## Deployment topology
 
 ```mermaid
 flowchart TB
   I[Internet :443] --> C[Caddy container]
-  subgraph net[Shared Docker network]
+  subgraph net[Private network blog-net]
     C --> A[blog container alias blog :3000]
   end
   A --- V[(volume blog-data at /app/data)]
 ```
 
 - The blog container publishes no ports; only Caddy is exposed.
-- `docker-compose.yml` attaches `blog` to an external network named `${CADDY_NETWORK:-caddy}` with alias `blog`; the real network name on the droplet is unknown until Phase 5. Compose refuses to start if that network does not exist.
+- `docker-compose.yml` creates a private network `blog-net` (name overridable with `BLOG_NETWORK`) with `internal: true` and attaches `blog` to it with alias `blog`. Only Caddy should join it: `docker network connect blog-net <caddy-container>`, or declare `blog-net` as an external network in Caddy's own compose file. Caddy still reaches `blog:3000`. Other containers on Caddy's own networks cannot reach the blog. Because the network is internal, the blog container has no outbound internet access.
+- Container hardening in compose: `cap_drop: [ALL]`, `security_opt: no-new-privileges:true`. The Dockerfile has a `HEALTHCHECK` that fetches `/health` every 30 s.
 - `blog-data` holds `blog.db`, `backups/` and `uploads/`; it is the unit to back up and the unit `docker compose down -v` deletes.
 - Memory limit `mem_limit: 300m`. Idle use seen in a test container: about 20 MiB.
 - Image: two stages. Stage 1 builds the frontend. Stage 2 is the backend runtime with `NODE_ENV=production`, `DB_PATH=/app/data/blog.db`, `PORT=3000`, the frontend in `/app/public`, and `USER node`. `/app/data` is the `blog-data` volume.
-- `docker-compose.dev.yml` (local only) publishes `127.0.0.1:3000` and swaps Caddy's network for the default one.
+- `docker-compose.dev.yml` (local only) publishes `127.0.0.1:3000` and resets the `blog-net` network so the service uses the default one.
 
 ## Design decisions
 
@@ -196,10 +200,14 @@ flowchart TB
 | `node:22-slim` (both stages), not Alpine | Avoids `better-sqlite3` build problems and matches its `node >=22` requirement (`engines` is `>=22` too). The Dockerfile installs with `--ignore-scripts` because the slim image has no compiler. Node 20 was dropped because it is end of life; the vulnerability reduction was not measured (see [milestones.md](milestones.md#phase-4-containerize)). |
 | Frontend uses one axios instance, cookie only, no `localStorage` | The token is not readable by script; a 401 anywhere logs the UI out. |
 | `cors` loaded in dev only | Production is same-origin. |
-| `trust proxy` = 1 | Caddy is the single proxy, so the rate limit sees the real client IP. |
-| Login rate limit: in-memory map, failures only, 10 per IP per 15 min | Single process, single user; no extra dependency. Lost on restart, which is acceptable. |
+| `trust proxy` defaults to 1, configurable with `TRUST_PROXY` (hop count, or IP/subnet string) | Caddy is the single proxy, so the rate limit sees the real client IP. A larger value would let a client spoof `X-Forwarded-For` to dodge the limit (audit M1). |
+| Login rate limit: in-memory, failures only, 10 per client per 15 min (IPv6 per /64), plus 100 per 15 min across all clients, with clients that logged in successfully in the last 24 h exempt from the global cap | Single process, single user; no extra dependency. Lost on restart, which is acceptable. The global cap bounds distributed guessing; the exemption keeps an attacker from locking out the owner, except after a restart (the exemption list is in memory) or from a new address. |
+| `token_version` on `users`, bumped by logout | Logout must end stolen sessions; stateless JWTs alone cannot. |
+| `requireAdmin` on all writes | A future non-admin user must not be able to write. |
+| Security headers set in Express (CSP, nosniff, Referrer-Policy, X-Frame-Options); HSTS (`max-age=31536000; includeSubDomains`) set in Caddy | Headers apply with or without Caddy; HSTS belongs where TLS terminates. Final CSP: `default-src 'self'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'`. Not checked in a browser (unverified). |
+| `NODE_ENV` other than `development`/`test` counts as production; `docker-compose.yml` forces `NODE_ENV: production` (beats `env_file`), the dev override sets `development` | An unset or wrongly set variable must not weaken cookies or the secret check on the server. |
 | Writes require `application/json` (415 otherwise) | PLAN.md requires it; the frontend only sends JSON (it also rules out form-encoded cross-site posts, inferred rationale). |
-| `JWT_SECRET` required in every environment | A missing secret must never fall back to a default. |
+| `JWT_SECRET` required in every environment; outside development/test it must be 32+ characters, have 8+ distinct characters and not look like a placeholder | A missing or guessable secret must never be accepted. |
 | Upload body is raw bytes (`express.raw`), not multer or multipart | No extra dependency, no filename or field parsing; the client sends the `File` with its `Content-Type`. |
 | Magic-byte check must match the declared type | `Content-Type` is client-controlled; only PNG, JPEG, GIF and WebP signatures are accepted. |
 | SVG rejected | SVG can carry scripts; the four raster types cannot. |
@@ -219,5 +227,6 @@ Added during Phase 1: login rate limit (in memory, per IP), 415 on non-JSON writ
 
 - [ ] Browser behavior of the frontend (Phase 3 click-through) and of the Phase 7 editor (see [writing-posts.md](writing-posts.md)).
 - [ ] Browser check of the public read-only change: no Login button on desktop or in the mobile drawer, `/login` still reachable by typing it, `/robots.txt` on the droplet ([testing.md](testing.md#31-logged-out-read-only-checks)).
-- [ ] Caddy network name and the compose attachment on the droplet (Phase 5).
+- [ ] Attach Caddy to `blog-net` on the droplet and confirm Caddy reaches `blog:3000` (Phase 5; unverified).
+- [ ] Browser check that the CSP does not block the app (unverified).
 - [ ] Full container checks re-run against the committed Dockerfile (it builds; the checks used an equivalent patched copy).

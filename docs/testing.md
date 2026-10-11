@@ -13,8 +13,8 @@ What was verified before, and what was not (details: [milestones.md](milestones.
 | Everything in a browser: login, reload, logout, redirects, 404 page, Markdown rendering, the whole editor (toolbar, paste, drag-drop, picker, preview, Save disabled), mobile menu, dark-mode look, 429 message | **Never verified.** Sections 3 and 4 are the first real run. |
 | Container (dev override, Docker 29.8.1): build, non-root, `/health`, SPA fallback, admin, login cookie, backup, upload, data kept across `down` then `up -d`, memory | Reported by the developer; not re-run by the docs pass. |
 | Secure cookie over `http://localhost` in a browser | Never tried (see [section 5](#5-docker)). |
-| Base `docker-compose.yml` with a real Caddy network, droplet, Caddy, cron, HTTPS, request body limit, test restore | Phase 5, not started. Unverified. |
-| Automated tests (Phase 2) | Skipped by the owner. See the [appendix](#appendix). |
+| Base `docker-compose.yml` with a real Caddy attached to `blog-net`, droplet, Caddy, cron, HTTPS, request body limit, test restore | Phase 5, not started. Unverified. |
+| Automated backend tests (`npm test` in `backend/`, 17 tests, added in the 2026-10-11 security pass) | Seen passing by the docs pass. They cover security behavior only (admin-only writes, logout revocation, headers, `Secure` cookie in production, secret checks incl. the distinct-character rule, limiter incl. the known-good exemption, `TRUST_PROXY`, `UPLOAD_DIR` guard incl. the backups directory, migration). The rest of the API is still manual. See the [appendix](#appendix) and [security.md](security.md). |
 
 Conventions: `$BASE` is `http://localhost:3000/api/v1` and `$ORIGIN` is `http://localhost:3000`. "Troubleshooting" links point to the table in [operations.md](operations.md#troubleshooting); the row name is given in each link text. Each step has a checkbox for you to tick.
 
@@ -40,9 +40,9 @@ Conventions: `$BASE` is `http://localhost:3000/api/v1` and `$ORIGIN` is `http://
 - [ ] **0.5 Create the admin from any directory.** Scripts open the same database wherever you run them (they resolve `.env` and `DB_PATH` against `backend/`). Test it from the repo root and from elsewhere:
   ```sh
   cd /path/to/blog-project
-  node backend/src/scripts/createAdmin.js admin admin@example.com 'change-me-12345'
+  ADMIN_PASSWORD='change-me-12345' node backend/src/scripts/createAdmin.js admin admin@example.com
   ```
-  Expect `Admin "admin" created.` (a harmless dotenv "injected env" line may print first). Password must be 12+ characters. Run it again: expect `An admin already exists; nothing to do.` Run it with a short password on a fresh database: expect exit code 1. Passing the password as an argument puts it in your shell history, so use a throwaway one here. Fails with "cannot log in later": [troubleshooting, "Admin created but cannot log in"](operations.md#troubleshooting).
+  Expect `Admin "admin" created.` (a harmless dotenv "injected env" line may print first). Password must be 12+ characters. Run it again: expect `An admin already exists; nothing to do.` Run it with a short password on a fresh database: expect exit code 1. The password is read from `ADMIN_PASSWORD` (or a hidden prompt if unset); it is no longer accepted as an argument. The inline variable still lands in shell history, so use a throwaway one here. Fails with "cannot log in later": [troubleshooting, "Admin created but cannot log in"](operations.md#troubleshooting).
 - [ ] **0.5a Seed sample data (optional, before the browser checks).** In `backend/`: `node src/scripts/seed.js`. Expect `Seed done: 5 categories and 14 posts added.`; a second run prints `0 categories and 0 posts added.` Without an admin it exits 1 (`No admin found. Run: node src/scripts/createAdmin.js`). Test data only; never on the droplet. Checks that expect an empty blog (for example an empty posts list) will see these posts, so use a fresh database for those. Script output verified 2026-10-11; viewing the posts in a browser was not verified.
 - [ ] **0.6 Start the backend.** In `backend/`: `npm run dev`. Expect `BlogMe Lite listening on port 3000`. Fails with `JWT_SECRET is not set`: [troubleshooting](operations.md#troubleshooting) first row.
 - [ ] **0.7 Windows note.** Use Git Bash for the `curl` steps if you can (commands below are bash). PowerShell variants are given where they differ. In PowerShell always type `curl.exe`; plain `curl` is an alias for `Invoke-WebRequest` and behaves differently.
@@ -128,9 +128,9 @@ Cookie jar: `-c jar.txt` saves cookies, `-b jar.txt` sends them. A line starting
 - [ ] **1.17 Delete a post.** `curl -s -b jar.txt -X DELETE $BASE/posts/<id of the SQL post>`. Expect `200` with `deletedPost` (the object, not 204). Repeat: `404`.
 - [ ] **1.18 Deleting a category keeps its posts.** `curl -s -b jar.txt -X DELETE $BASE/category/1` expect `200` with `deletedCategory` (with the `postCount` it had). Then `curl -s $BASE/posts/1`: the post exists and `category` is `null`. Recreate the category afterwards (1.7) for later steps; its id will now be `"2"`, and set post 1 back to it with a `PUT` containing `"category":"2"`.
 - [ ] **1.19 Partial category update.** `curl -s -b jar.txt -X PUT -H 'Content-Type: application/json' -d '{"categoryDescription":"New text"}' $BASE/category/2` expect `200`, name unchanged. (This follows the code; PLAN.md does not mention partial updates.)
-- [ ] **1.20 Logout clears the cookie.** `curl -i -b jar.txt -c jar.txt -X POST $BASE/user/logout` expect `200` `Logged out` and a `Set-Cookie: token=;` with an expiry in the past. Then `curl -i -b jar.txt $BASE/user/profile` expect `401`. Log in again (1.3) to continue.
+- [ ] **1.20 Logout clears the cookie.** `curl -i -b jar.txt -c jar.txt -X POST -H 'Content-Type: application/json' -d '{}' $BASE/user/logout` expect `200` `Logged out` (without the JSON header: `415`) and a `Set-Cookie: token=;` with an expiry in the past. Then `curl -i -b jar.txt $BASE/user/profile` expect `401`. Logout also revokes every other token issued to that user (a copy of the old cookie, saved before logout, now gets `401` too). Log in again (1.3) to continue.
 - [ ] **1.21 Data survives a server restart (Phase 1 gap, never run).** Stop the server (`Ctrl+C`), start it again (`npm run dev`), then `curl -s $BASE/posts`. Expect the same posts. Your old cookie still works too (same `JWT_SECRET`): `curl -s -b jar.txt $BASE/user/profile`. Fails: check `DB_PATH` did not change between runs.
-- [ ] **1.22 Rate limit: 429 after 10 failures (do this last in this section).** Rule: 10 failures per IP per fixed 15 minutes; the 11th request is 429, even with the right password. Restarting the server clears it.
+- [ ] **1.22 Rate limit: 429 after 10 failures (do this last in this section).** Rule: 10 failures per client (IPv6 per /64) per fixed 15 minutes; the 11th request is 429, even with the right password. A global cap of 100 failures from all clients per window also blocks every client that has not logged in successfully in the last 24 hours; clients with a recent successful login are exempt from the global cap only (the per-client cap of 10 still applies to them). Restarting the server clears the counters and the exemption list.
   bash:
   ```sh
   for i in $(seq 1 12); do curl -s -o /dev/null -w "%{http_code}\n" -H 'Content-Type: application/json' -d '{"username":"admin","password":"wrong-password"}' $BASE/user/login; done
@@ -189,7 +189,7 @@ Start both servers: backend (`npm run dev` in `backend/`, port 3000; restart it 
 - [ ] **3.10 Delete a post.** Details page > Delete > the "Confirm Delete" dialog > Cancel keeps the post; Delete removes it and goes to `/list`. The post is gone.
 - [ ] **3.11 Delete a category keeps its posts.** Create a post in a throwaway category, then delete the category from `/categories` (confirm dialog). The post is still on `/list` and shows no category.
 - [ ] **3.12 404 page.** Visit `/does-not-exist`. Expect "404" and "Page not found." with a "Back home" button that goes to `/`. Visit `/posts/99999`: expect an error line (`Error: ...`; the exact text, probably the axios 404 message, is unverified). Visit `/edit-post/99999` while logged in and watch the console (behavior unverified).
-- [ ] **3.13 Logout clears it.** Click Logout. Expect a redirect to `/`, nav back to the public one (no Login link). Cookies: `token` gone (or expired). F5: still logged out. The server clears the cookie but does not revoke the token (known gap), so there is nothing more to check here.
+- [ ] **3.13 Logout clears it.** Click Logout. Expect a redirect to `/`, nav back to the public one (no Login link). Cookies: `token` gone (or expired). F5: still logged out. The server also revokes all tokens for the user (`token_version`); to confirm, replay a cookie copied before logout with `curl` and expect `401`.
 - [ ] **3.14 Protected routes redirect when logged out.** While logged out visit each of `/create-post`, `/edit-post/1`, `/create-category`, `/edit-category/1`. Each should land on `/login` (no flash of the form). Public routes `/`, `/list`, `/categories`, `/posts/1` stay open.
 - [ ] **3.15 Logged-out visitors see no controls.** Logged out: the post details page has no Edit or Delete buttons; `/categories` has no "Create Category" button and the cards have no Edit/Delete; the nav has no Create Post. The list and details pages still show all content.
 - [ ] **3.16 Session ends on a 401.** Log in, then in DevTools delete the `token` cookie and click "Create Post" in the nav (a full page load). Expect to be sent to `/login`. Optionally: log in, delete the cookie, then press Delete in a dialog without reloading; the 401 interceptor should log you out (behavior from the code, unverified).
@@ -290,32 +290,32 @@ Security probes (all must show as inert text or an inert element; no alert box m
 
 ## 5. Docker
 
-Stop the local backend first (port 3000). All commands from the repo root. The dev override publishes `127.0.0.1:3000` and avoids the external Caddy network. Convenience alias:
+Stop the local backend first (port 3000). All commands from the repo root. The dev override publishes `127.0.0.1:3000` and resets the private `blog-net` network. Convenience alias:
 
 bash: `alias dc='docker compose -f docker-compose.yml -f docker-compose.dev.yml'`
 PowerShell: `function dc { docker compose -f docker-compose.yml -f docker-compose.dev.yml @args }`
 
 Never run `docker compose down -v` in this section unless you mean to wipe the database, backups and uploads (`-v` deletes the `blog-data` volume).
 
-- [ ] **5.1 Root env file.** `cp .env.example .env` and set `JWT_SECRET` to 32+ characters (`openssl rand -hex 32`, or any 32+ character string). Use the **root** `.env.example`, not `backend/.env.example` (that one would override `NODE_ENV` and `DB_PATH` in the container). `git status` must not list `.env` (it is ignored).
+- [ ] **5.1 Root env file.** `cp .env.example .env` and set `JWT_SECRET` to 32+ characters (`openssl rand -hex 32`, or any 32+ character string). Use the **root** `.env.example`, not `backend/.env.example` (its `DB_PATH` would override the container's; `NODE_ENV` in `.env` is ignored because the compose files set it). `git status` must not list `.env` (it is ignored).
 - [ ] **5.2 Build and run.** `dc up -d --build`, then `dc ps`. Expect the `blog` service `Up`. The first build can take minutes. Fails with `node-gyp`/`find Python`: [troubleshooting](operations.md#troubleshooting) (the `--ignore-scripts` flag must be in the Dockerfile). Fails with network `caddy` not found: you left out the dev override.
 - [ ] **5.3 Health.** `curl -s http://localhost:3000/health` expect `{"status":"ok"}`. Logs: `dc logs --tail=50 blog` shows `BlogMe Lite listening on port 3000`.
 - [ ] **5.4 Non-root and permissions.**
   ```sh
   dc exec blog id                       # expect uid=1000(node) gid=1000(node)
   dc exec blog sh -c 'ls -ld /app/data'  # expect owner node
-  dc exec blog sh -c 'echo $NODE_ENV $DB_PATH'   # production /app/data/blog.db
+  dc exec blog sh -c 'echo $NODE_ENV $DB_PATH'   # with the dev override: development /app/data/blog.db (base compose file alone: production); not run, unverified
   ```
   On Git Bash for Windows, paths starting with `/` may be rewritten; wrap commands in `sh -c '...'` as shown. Fails (not `node`): [troubleshooting, "Cannot write DB"](operations.md#troubleshooting).
 - [ ] **5.5 SPA and API.** `curl -i http://localhost:3000/` and `curl -i http://localhost:3000/posts/1` expect `200` `text/html`. `curl -i http://localhost:3000/api/v1/nope` expect JSON 404 (not HTML). `curl -s http://localhost:3000/api/v1/posts` expect `{"status":"success","posts":[]}`. Fails with JSON "Not found" on `/`: [troubleshooting, "/health is fine but the site shows JSON Not found"](operations.md#troubleshooting).
 - [ ] **5.6 Admin via exec (interactive).** `dc exec -it blog node src/scripts/createAdmin.js` and answer the prompts (password 12+ characters; it is not echoed). Expect `Admin "<name>" created.` In Git Bash on Windows `-it` may complain "the input device is not a TTY"; use PowerShell, or prefix with `winpty` (unverified).
   Optional sample data for the browser checks (local container only, after the admin exists; rebuild with `--build` so the image includes the script): `dc exec blog node src/scripts/seed.js`. Verified in a throwaway container on 2026-10-11 (also `dc exec blog npm run seed`); not clicked through in a browser. Never on the droplet.
-- [ ] **5.7 Login over curl in the container.** `curl -i -c cj.txt -H 'Content-Type: application/json' -d '{"username":"<name>","password":"<password>"}' http://localhost:3000/api/v1/user/login`. Expect `200` and the cookie **with `Secure`**: `HttpOnly; Secure; SameSite=Lax; Max-Age=604800` (because the image sets `NODE_ENV=production`). Create a category and a post with `-b cj.txt` (as in section 1; curl sends the Secure cookie to `http://localhost`, which it treats as trustworthy; if yours does not, use `https` via Caddy).
+- [ ] **5.7 Login over curl in the container.** `curl -i -c cj.txt -H 'Content-Type: application/json' -d '{"username":"<name>","password":"<password>"}' http://localhost:3000/api/v1/user/login`. Expect `200` and the cookie `HttpOnly; SameSite=Lax; Max-Age=604800` **without `Secure`** (the dev override sets `NODE_ENV=development`; with the base compose file alone, `NODE_ENV=production` and the cookie has `Secure`). Not run, unverified. Create a category and a post with `-b cj.txt` (as in section 1; curl sends the Secure cookie to `http://localhost`, which it treats as trustworthy; if yours does not, use `https` via Caddy).
 - [ ] **5.8 Deep link refresh in a browser (needs a working cookie, see 5.9).** Open `http://localhost:3000/posts/1`, press F5. The page must reload to the post, not a blank page or JSON 404. Also `http://localhost:3000/does-not-exist` shows the React 404 page.
-- [ ] **5.9 Browser login on `http://localhost:3000`: the Secure cookie question.** The cookie flag comes from `secure: process.env.NODE_ENV === 'production'` in `backend/src/middleware/auth.js`, and the image sets `NODE_ENV=production`, so the container always sends `Secure`. Browsers refuse to store a Secure cookie from a plain `http://` page unless they treat the origin as secure. Chrome and Firefox generally treat `http://localhost` as a secure context and accept it; Safari and any other host name or IP (`http://127.0.0.1:3000`, `http://192.168.x.x:3000`) do not. This was never tried in a browser (unverified). Test it: log in on `http://localhost:3000/login`, then F5. If you stay logged in, the cookie is stored. If you are bounced back (login "succeeds" then everything acts logged out, and the cookie is missing in DevTools), the browser rejected it; that is not an app bug. Ways to test properly:
+- [ ] **5.9 Browser login on `http://localhost:3000`.** The cookie flag comes from `secure: !isDevLike()` in `backend/src/middleware/auth.js` (`Secure` unless `NODE_ENV` is `development` or `test`). `docker-compose.dev.yml` sets `NODE_ENV=development`, so with the dev override the cookie is not Secure and login over plain `http://localhost:3000` should work (not tried in a browser; unverified). Without the override, `docker-compose.yml` forces `NODE_ENV=production`, the cookie is `Secure`, and browsers refuse to store a Secure cookie from a plain `http://` page unless they treat the origin as secure. Chrome and Firefox generally treat `http://localhost` as a secure context and accept it; Safari and any other host name or IP (`http://127.0.0.1:3000`, `http://192.168.x.x:3000`) do not. This was never tried in a browser (unverified). Test it: log in on `http://localhost:3000/login`, then F5. If you stay logged in, the cookie is stored. If you are bounced back (login "succeeds" then everything acts logged out, and the cookie is missing in DevTools), the browser rejected it; that is not an app bug. Ways to test properly:
   1. Section 3 against the local dev server (`NODE_ENV=development`, no `Secure`): that is the functional test of the UI.
   2. HTTPS through Caddy on the droplet (section 6): the real production test.
-  3. Optional and unverified: for a one-off local container test only, add `NODE_ENV=development` to the root `.env` and recreate (`dc up -d --force-recreate`); the 32-character secret check and the CORS-off setting then no longer apply, and `Secure` is dropped. Remove that line afterwards and recreate again. Do not do this on the server.
+  3. Adding `NODE_ENV=development` to the root `.env` no longer changes anything: the compose files set `NODE_ENV` explicitly and that wins over `env_file`.
 - [ ] **5.10 Persistence across down and up.** Make sure a post and the admin exist. `dc down` (no `-v`!), then `dc up -d`. Expect the post list, the admin login and the old cookie to still work (`curl -s -b cj.txt http://localhost:3000/api/v1/user/profile` returns the user). `dc ps` shows the container recreated. Also test `dc restart blog` and `dc stop` then `dc start` (never run before). Fails (data gone): did you run `down -v`? See [operations.md](operations.md#start-stop-restart-update).
 - [ ] **5.11 Backup file.**
   ```sh
@@ -338,14 +338,14 @@ Never run `docker compose down -v` in this section unless you mean to wipe the d
 
 Phase 5 has not started; nothing below was run. Do the setup first from [deploy.md](deploy.md). Replace `<domain>`.
 
-- [ ] **6.1 First start.** On the droplet, `.env` has a 32+ character `JWT_SECRET`, `docker compose up -d --build` (use the base compose file, no dev override), `docker compose ps` shows Up. Fails with network not found: set `CADDY_NETWORK` ([troubleshooting](operations.md#troubleshooting)). Fails with OOM during build: add swap or build elsewhere.
+- [ ] **6.1 First start.** On the droplet, `.env` has a 32+ character `JWT_SECRET`, `docker compose up -d --build` (use the base compose file, no dev override), `docker compose ps` shows Up. Then attach Caddy: `docker network connect blog-net <caddy-container>` (or external network in Caddy's compose); a 502 from Caddy usually means it is not on `blog-net` ([troubleshooting](operations.md#troubleshooting)). Fails with OOM during build: add swap or build elsewhere.
 - [ ] **6.2 HTTPS loads.** `https://blog.<domain>` shows the site with a valid certificate (padlock). `curl -s https://blog.<domain>/health` returns `{"status":"ok"}`. `http://blog.<domain>` redirects to HTTPS (Caddy default; unverified). 502 means the container is down or off the Caddy network ([troubleshooting](operations.md#troubleshooting)).
 - [ ] **6.3 Admin and login.** `docker compose exec -it blog node src/scripts/createAdmin.js`; log in at `/login` in a browser. This is the real test for the `Secure` cookie: DevTools shows `token` with Secure and HttpOnly, F5 keeps you logged in, Logout clears it.
 - [ ] **6.4 Publish a post with an image.** Create a category and a post, paste a screenshot into the editor, save, open the post logged out (private window): the image loads from `https://blog.<domain>/uploads/<name>`; `curl -I` on it shows `nosniff`, the CSP and the long cache header.
 - [ ] **6.5 Request body size limit.** With the Caddy snippet's `request_body { max_size 6MB }`: an upload of about 5.5 MB should reach the app and get the JSON 413 `Image too large (max 5 MB)`; one of 7 MB should be rejected by Caddy itself (a non-JSON 413; unverified). A valid 4 MB image goes through. Fails (Caddy does not start or reload): check the directive against your Caddy version.
-- [ ] **6.6 Rate limit sees real IPs.** Fail the login 11 times from your own machine; you get 429. Then log in from a different network (phone data) and confirm you are **not** locked out (otherwise `trust proxy` sees only Caddy's IP and everyone shares one counter; unverified).
+- [ ] **6.6 Rate limit sees real IPs.** Fail the login 11 times from your own machine; you get 429. Then log in from a different network (phone data) and confirm you are **not** locked out (otherwise `TRUST_PROXY` is wrong and the app sees only Caddy's IP and everyone shares one counter; unverified).
 - [ ] **6.7 Backup cron produced a file.** After the first scheduled run (or run the cron line by hand): `docker compose exec blog sh -c 'ls -l /app/data/backups'` shows a recent `blog-*.db`; the log file named in the cron line (`/var/log/blog-backup.log`) has `Backup written: ...` and no errors; your uploads copy exists wherever you configured it (check for the nested `uploads/uploads` layout mentioned in [deploy.md](deploy.md#nightly-backup-cron)).
-- [ ] **6.8 Test restore on a scratch copy.** Follow [deploy.md](deploy.md#test-restore): copy the newest backup out, run the integrity check (post count and `ok`), start a throwaway server on port 3999 with `DB_PATH=./scratch.db JWT_SECRET=change-me PORT=3999 node src/index.js` and `curl http://localhost:3999/api/v1/posts`. Then copy `uploads/` out, point a throwaway server at it with `UPLOAD_DIR`, and `curl -I http://localhost:3999/uploads/<name>` for a known image (expect 200 and `nosniff`). Do **not** restore into the live volume for this test. The live restore ([operations.md](operations.md#restore-unverified)) has never been run either.
+- [ ] **6.8 Test restore on a scratch copy.** Follow [deploy.md](deploy.md#test-restore): copy the newest backup out, run the integrity check (post count and `ok`), start a throwaway server on port 3999 with `NODE_ENV=development DB_PATH=./scratch.db JWT_SECRET=change-me PORT=3999 node src/index.js` and `curl http://localhost:3999/api/v1/posts`. Then copy `uploads/` out, point a throwaway server at it with `UPLOAD_DIR`, and `curl -I http://localhost:3999/uploads/<name>` for a known image (expect 200 and `nosniff`). Do **not** restore into the live volume for this test. The live restore ([operations.md](operations.md#restore-unverified)) has never been run either.
 - [ ] **6.9 Survives a reboot.** `sudo reboot`; the container returns by itself (`restart: unless-stopped`) and the site and data are intact.
 
 ## 7. Security spot checks
@@ -368,6 +368,7 @@ Phase 5 has not started; nothing below was run. Do the setup first from [deploy.
 - [ ] **7.5 Direct upload URL cannot run script.** Open `http://localhost:5173/uploads/<NAME>` (or `:3000`) in a browser: it shows the image only. In DevTools Network, the response has `nosniff` and the sandbox CSP. An upload that is not an image never gets stored (2.3), and SVG is rejected, so there is no uploaded file that can run script. Optional: rename a `.txt` to `.png` and upload it, expect 415.
 - [ ] **7.6 Uploads need auth.** Repeat 2.5. Also confirm there is no register route: `curl -i -X POST -H 'Content-Type: application/json' -d '{"username":"x","password":"y"}' $BASE/user/register` expect `404`.
 - [ ] **7.7 Login timing/enumeration.** Wrong user and wrong password return the identical 401 body (1.2).
+- [ ] **7.8 Security headers and CSP in a browser (never verified).** Against the container (section 5) or the droplet, open the site with DevTools Console open and click through home, a post, login and the editor. Expect no `Content-Security-Policy` violation messages (the CSP allows `'self'` scripts, inline styles, and `https:`/`data:` images). `curl -I $BASE/../health` (or any app URL) shows `Content-Security-Policy`, `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options` and no `X-Powered-By`. Through Caddy, also `Strict-Transport-Security`. If the CSP blocks something (for example an image from an `http://` URL or an embedded font), report the console text. See [security.md](security.md).
 
 ## 8. Results log
 
@@ -422,16 +423,16 @@ Send, for the failing step number:
 - Lint errors: `npm run lint` in `frontend/` reports about 42 errors (prop-types, unused `React` imports). The build does not depend on lint.
 - Orphaned images are never deleted: editing or deleting a post leaves its images in `uploads/`. There is no cleanup tool (Phase 6 idea).
 - Images are public by URL and keep EXIF data (such as GPS). Strip it before uploading photos.
-- Logout and password changes do not revoke tokens; a copied cookie works until it expires (7 days) or `JWT_SECRET` is rotated.
-- The rate limit is in memory (lost on restart) and per IP.
+- Logout revokes all of the user's tokens, but a password change does not; after a manual password reset, old cookies work until they expire (7 days), logout, or `JWT_SECRET` rotation.
+- The rate limit is in memory (lost on restart), per client, plus a global cap of 100 failures per 15 minutes. Clients with a successful login in the last 24 hours are exempt from the global cap, but the exemption is lost on restart, so the owner can still be locked out after a restart during an attack.
 - The login form requires 6+ characters client-side while the admin password minimum is 12; harmless.
 - The mobile nav is marked "have to optimize" in the code; post cards use a fixed grid size.
 - `docker compose down -v` deletes the database, backups and uploads together; backups live on the same volume as the database.
 - No likes, comments, registration, OAuth, drafts, slugs, search or pagination (out of scope).
 
-### Automated tests (Phase 2) are skipped for now
+### Automated tests
 
-There is no `npm test` script in `backend/package.json`. The plan (PLAN.md Phase 2) is `node --test` with `supertest` and `DB_PATH=:memory:`, and `.claude/agents/tester.md` defines the tester agent that would write them. Cases it is meant to cover, so you can ask for them later:
+Backend security tests exist: `cd backend && npm test` (17 tests, `node --test` with `supertest`; seen passing on 2026-10-11). See [development.md](development.md#tests). They do not replace the manual sections above. Phase 2's wider list is still not automated, so you can ask for these later:
 
 - Login success and failure (generic 401), and the cookie flags.
 - 401 on protected routes without the cookie.
@@ -441,6 +442,7 @@ There is no `npm test` script in `backend/package.json`. The plan (PLAN.md Phase
 - SQL injection strings in titles are stored as plain text.
 - No response body contains `password_hash`.
 - `updated_at` changes on edit (from the tester agent's list).
-- Rate-limited login (429) (from the tester agent's list).
-- Slug collisions (listed in `tester.md`, but slugs are not built in v1; they are a Phase 6 idea, so this case does not apply yet).
-- Not on either list, worth adding with the same tool: the upload cases of section 2 (magic bytes, SVG, size, auth, headers).
+- Slug collisions (listed in `tester.md`, but slugs are not built in v1; this case does not apply yet).
+- The upload cases of section 2 (magic bytes, SVG, size, auth, headers).
+
+Already automated: 403 for non-admin writes, logout revocation, security headers, `Secure` cookie off in test and on in production, the 429 per-client/IPv6/global limits (with the known-good exemption), `TRUST_PROXY` parsing, `JWT_SECRET` checks, the `UPLOAD_DIR` guard (database and backups directories).

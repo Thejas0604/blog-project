@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT,
   password_hash TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'admin',
+  token_version INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 CREATE TABLE IF NOT EXISTS categories (
@@ -42,6 +43,11 @@ CREATE TABLE IF NOT EXISTS posts (
   updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 `);
+
+// Existing databases created before token_version was added.
+if (!db.prepare("SELECT 1 FROM pragma_table_info('users') WHERE name = 'token_version'").get()) {
+  db.exec('ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0');
+}
 
 process.on('SIGTERM', () => {
   if (db.open) db.close();

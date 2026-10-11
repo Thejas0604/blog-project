@@ -8,6 +8,28 @@ const db = require('./db');
 let dir;
 if (process.env.UPLOAD_DIR) {
   dir = path.resolve(path.join(__dirname, '..'), process.env.UPLOAD_DIR);
+  // Uploads are served publicly: never let them overlap the database or its directory.
+  if (db.name !== ':memory:') {
+    const real = (p) => {
+      try {
+        return fs.realpathSync(p);
+      } catch {
+        return path.resolve(p);
+      }
+    };
+    const inside = (parent, child) => {
+      const rel = path.relative(parent, child);
+      return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
+    };
+    const dbDir = real(path.dirname(db.name));
+    if (inside(real(dir), dbDir)) {
+      throw new Error('UPLOAD_DIR must not contain the database file or its directory');
+    }
+    // Backups are full database copies: never serve them either.
+    if (inside(path.join(dbDir, 'backups'), real(dir))) {
+      throw new Error('UPLOAD_DIR must not be the backups directory or inside it');
+    }
+  }
 } else if (db.name === ':memory:') {
   dir = fs.mkdtempSync(path.join(os.tmpdir(), 'blogme-uploads-'));
 } else {

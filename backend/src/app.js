@@ -4,19 +4,42 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const express = require('express');
 const cookieParser = require('cookie-parser');
 
+const { isDevLike } = require('./env');
+
 const secret = process.env.JWT_SECRET;
 if (!secret) throw new Error('JWT_SECRET is not set');
-if (process.env.NODE_ENV === 'production' && secret.length < 32) {
-  throw new Error('JWT_SECRET must be at least 32 characters in production');
+if (!isDevLike()) {
+  if (secret.length < 32) throw new Error('JWT_SECRET must be at least 32 characters outside development');
+  if (new Set(secret).size < 8) throw new Error('JWT_SECRET has too few distinct characters; generate one with: openssl rand -hex 32');
+  if (/^(change-?me|secret|password|jwt[-_]?secret|your[-_])/i.test(secret.trim())) {
+    throw new Error('JWT_SECRET looks like a placeholder; generate one with: openssl rand -hex 32');
+  }
 }
 
 const app = express();
-app.set('trust proxy', 1); // Caddy is the one proxy
+app.disable('x-powered-by');
+// TRUST_PROXY: number of proxy hops (default 1, Caddy) or an IP/subnet string.
+const trustProxy = (process.env.TRUST_PROXY || '1').trim();
+app.set('trust proxy', /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy);
 
-if (process.env.NODE_ENV !== 'production') {
+if (isDevLike()) {
   const cors = require('cors');
   app.use(cors({ origin: process.env.CLIENT_ORIGIN, credentials: true }));
 }
+
+// Security headers for everything except /uploads, which sets its own stricter CSP.
+app.use((req, res, next) => {
+  if (!req.path.startsWith('/uploads')) {
+    res.set({
+      'Content-Security-Policy':
+        "default-src 'self'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'",
+      'X-Content-Type-Options': 'nosniff',
+      'Referrer-Policy': 'strict-origin-when-cross-origin',
+      'X-Frame-Options': 'DENY',
+    });
+  }
+  next();
+});
 
 app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());
