@@ -100,6 +100,8 @@ curl http://localhost:3000/health
 
 ## Tests
 
+Manual, step-by-step checks for the whole app (not yet run) are in [testing.md](testing.md).
+
 Phase 2 is skipped for now. `backend-lite/package.json` has no `test` script, so `npm test` does not exist. Phase 1 was verified by manual `curl` runs (see [milestones.md](milestones.md#phase-1-sqlite-backend-backend-lite)). Planned: `node --test` with `supertest` and `DB_PATH=:memory:`.
 
 ## Project layout (`backend-lite/`)

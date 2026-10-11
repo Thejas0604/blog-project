@@ -10,6 +10,7 @@ Status (2026-10-05): backend (Phase 1) verified by `curl`. Frontend (Phase 3) re
 | [deploy.md](deploy.md) | First-time droplet setup, Caddy snippet, environment, nightly backup cron (database and uploads), test restore. |
 | [development.md](development.md) | Local setup (backend, frontend, Docker), env vars, tests, project layout, conventions. |
 | [api/overview.md](api/overview.md) | Every endpoint: auth, request body, response keys, status codes, `curl`. |
+| [testing.md](testing.md) | Step-by-step manual test checklist for the owner: backend curl, uploads, browser, editor, Docker, droplet, security, results log. Not yet run. |
 | [milestones.md](milestones.md) | Status of each PLAN.md phase, what was built, how it was verified, known gaps. |
 
 Start with [milestones.md](milestones.md) for what is done and the "Known gaps / next steps" list.

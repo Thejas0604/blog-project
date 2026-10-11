@@ -46,4 +46,5 @@ All docs are in [docs/](docs/README.md):
 - [Development](docs/development.md)
 - [Operations](docs/operations.md)
 - [Deploy](docs/deploy.md)
+- [Manual testing guide](docs/testing.md)
 - [Milestones](docs/milestones.md)
