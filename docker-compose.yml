@@ -1,6 +1,8 @@
 services:
   blog:
     build: .
+    image: blog:latest
+    container_name: blog
     init: true
     restart: unless-stopped
     env_file: .env
