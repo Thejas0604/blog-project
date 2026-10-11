@@ -1,6 +1,6 @@
 # Writing posts
 
-How to use the post editor as the owner. Log in, then use Create Post (`/create-post`) or Edit Post (`/edit-post/:id`); both use the same editor.
+How to use the post editor as the owner. The public site has no Login link (desktop or mobile menu), so to reach the admin, type `/login` after the site address (for example `https://blog.<domain>/login`) and bookmark it. Once logged in, the navbar shows Create Post and Logout. The page is unlinked and `robots.txt` disallows it, but it is not secret: the API enforces auth. (Link removal verified by reading the code and a build; not checked in a browser.) Then use Create Post (`/create-post`) or Edit Post (`/edit-post/:id`); both use the same editor.
 
 Verification status: this guide is written from the editor's source code. Nothing in the editor UI has been run in a browser (toolbar clicks, selection restore, paste, drag-drop, image picker, preview, layout, Save while uploading, images on the post page). Treat the behaviour below as expected, not confirmed. What was seen to work: `npm run build`, the pure text functions behind the toolbar (Node checks), and login, image upload and fetch through the Vite proxy with `curl`. See [milestones.md](milestones.md#phase-7-markdown-editor-and-image-uploads).
 

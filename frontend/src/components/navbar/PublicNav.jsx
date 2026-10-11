@@ -89,19 +89,6 @@ export default function PublicNavbar() {
                             </Link>
                         </Box>
                     </Box>
-                    <Box
-                        sx={{
-                            display: { xs: "none", md: "flex" },
-                            gap: 1,
-                            alignItems: "center",
-                        }}
-                    >
-                        <Link href="/login">
-                            <Button color="primary" variant="text" size="small">
-                                Login
-                            </Button>
-                        </Link>
-                    </Box>
                     {/* Mobile view, have to optimize */}
                     <Box sx={{ display: { sm: "flex", md: "none" } }}>
                         <IconButton
@@ -138,17 +125,6 @@ export default function PublicNavbar() {
                                 </MenuItem>
                                 <MenuItem>
                                     <Link href="/categories">Categories</Link>
-                                </MenuItem>
-                                <MenuItem>
-                                    <Link href="/login">
-                                        <Button
-                                            color="primary"
-                                            variant="outlined"
-                                            fullWidth
-                                        >
-                                            Login
-                                        </Button>
-                                    </Link>
                                 </MenuItem>
                             </Box>
                         </Drawer>

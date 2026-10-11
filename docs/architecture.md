@@ -1,6 +1,6 @@
 # Architecture
 
-Status (2026-10-05): backend verified against `backend-lite/src` (Phase 1, Phase 7 uploads). Frontend read from `frontend/src` (Phases 3 and 7; build verified, browser click-through not done). Container verified by running a patched copy of the Dockerfile (see [milestones.md](milestones.md#phase-4-containerize)); the committed Dockerfile now builds (lead-confirmed; the full checks used an equivalent patched copy). Caddy and the droplet (Phase 5) are not started.
+Status (2026-10-05): backend verified against `backend-lite/src` (Phase 1, Phase 7 uploads). Frontend read from `frontend/src` (Phases 3 and 7; build verified, browser click-through not done). Container verified by running a patched copy of the Dockerfile (see [milestones.md](milestones.md#phase-4-containerize)); the committed Dockerfile now builds (lead-confirmed; the full checks used an equivalent patched copy). Caddy and the droplet (Phase 5) are not started. Public read-only frontend change (2026-10-11): build and curl checks verified, no browser click-through.
 
 BlogMe Lite is a single-author blog: one Docker container (Express serving the API and the built React app) with one SQLite file on a volume, behind Caddy at `blog.<domain>`.
 
@@ -60,8 +60,9 @@ stateDiagram-v2
 
 - The 401 interceptor in `axiosInstance` calls a handler that `AuthContext` registers on mount; it dispatches `LOGOUT`.
 - The Logout button dispatches `LOGOUT` and navigates to `/` even if the logout request fails.
-- Routes (`App.jsx`): `/`, `/list`, `/login`, `/posts/:id`, `/categories` are public. `/create-post`, `/edit-post/:id`, `/create-category`, `/edit-category/:id` redirect to `/login` when logged out (UI only; the API enforces auth). Anything else renders the `NotFound` page.
-- The navbar is `PrivateNav` when `user` is set, otherwise `PublicNav`.
+- Routes (`App.jsx`): `/`, `/list`, `/login`, `/posts/:id`, `/categories` are public. `/create-post`, `/edit-post/:id`, `/create-category`, `/edit-category/:id` redirect to `/login` when logged out (UI only; the API enforces auth). Anything else renders the `NotFound` page. `/login` is public but unlinked (see the navbar bullet): the owner types the URL.
+- The navbar is `PrivateNav` when `user` is set, otherwise `PublicNav`. `PublicNav` has no Login button (desktop) and no Login item (mobile drawer), and no other component links to `/login`, so a logged-out visitor sees a read-only site with no sign of an admin area. `GetAllCategories` treats any logged-in user as admin (`isAdmin = Boolean(user)`); this equals the old `role === "admin"` check today because login and `/user/profile` return the role, the DB default is `admin` and `createAdmin.js` allows one admin.
+- `frontend/public/robots.txt` is `User-agent: *` / `Disallow: /login`. It is copied into `dist/` and, when `public/` is built, served as `text/plain` by Express (not `index.html`); Caddy forwards everything to Express, so production serves it too (not checked on the droplet). It stops well-behaved crawlers fetching `/login` but does not strictly keep the URL out of search indexes; a `noindex` meta tag on the Login page would be stronger (not done).
 - Post content is rendered as Markdown (`PostDetails`); `EditPost` has a category select; `CategoryCard` shows `postCount`.
 - Removed from the old frontend: Register and ForgotPassword pages, likes, and the Mongo-era image upload. Phase 7 added a Markdown editor with image upload (below).
 - Unverified in a browser: all of the UI behavior above, the editor below and the GFM styling (only `npm run build`, the `markdownActions` Node checks, and login, upload and fetch through the Vite proxy with `curl` were checked).
@@ -208,6 +209,7 @@ flowchart TB
 | Out of scope: OAuth, cloud or multipart uploads (only the admin raw image upload exists), likes, comments, registration, drafts, slugs, pagination, search | Keep it lite; may come in Phase 6. |
 | Custom Markdown editor, no editor library | No new dependency; the toolbar is small pure functions in `markdownActions.js`. |
 | One `PostContent` renderer, no `rehype-raw` | Preview matches the published page; raw HTML in a post is never rendered. |
+| Public read-only frontend: no link to `/login`, `robots.txt` disallows it | The site is for readers; the owner types `/login`. Hiding the link is obscurity, not security: every write endpoint returns 401 without the cookie (curl-checked). Later idea, not done: Caddy IP allowlist or basicauth on the login endpoint; a separate admin build. |
 
 Image uploads were added in Phase 7 (see above).
 
@@ -216,5 +218,6 @@ Added during Phase 1: login rate limit (in memory, per IP), 415 on non-JSON writ
 ## Still to verify
 
 - [ ] Browser behavior of the frontend (Phase 3 click-through) and of the Phase 7 editor (see [writing-posts.md](writing-posts.md)).
+- [ ] Browser check of the public read-only change: no Login button on desktop or in the mobile drawer, `/login` still reachable by typing it, `/robots.txt` on the droplet ([testing.md](testing.md#31-logged-out-read-only-checks)).
 - [ ] Caddy network name and the compose attachment on the droplet (Phase 5).
 - [ ] Full container checks re-run against the committed Dockerfile (it builds; the checks used an equivalent patched copy).

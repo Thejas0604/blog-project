@@ -65,8 +65,8 @@ const GetAllCategories = () => {
         }
     };
 
-    // Check if user is admin (you'll need to implement role checking in AuthContext)
-    const isAdmin = user?.role === "admin" || false;
+    // Only the logged-in owner sees write controls.
+    const isAdmin = Boolean(user);
 
     if (loading) {
         return (

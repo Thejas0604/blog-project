@@ -176,7 +176,7 @@ PowerShell: `[IO.File]::WriteAllBytes("$PWD\t.png",[Convert]::FromBase64String("
 
 Start both servers: backend (`npm run dev` in `backend-lite/`, port 3000; restart it first to reset the rate limit) and frontend (`npm run dev` in `frontend/`, open `http://localhost:5173`). The app is always dark (the theme is fixed; there is no light mode toggle). Open DevTools (F12) and keep the Console and Network tabs visible. Any red console error during a step is a finding.
 
-- [ ] **3.1 Home loads.** `/` shows the hero and a "Read Blogs" button leading to `/list`. Logged-out nav: Home, View Blogs, Categories, Login (no Create Post, no Logout).
+- [ ] **3.1 Home loads.** `/` shows the hero and a "Read Blogs" button leading to `/list`. Logged-out nav: Home, View Blogs, Categories (no Login since 2026-10-11, no Create Post, no Logout; see 3.1 below).
 - [ ] **3.2 Login validation.** Go to `/login`. Submit empty: "Please enter a username." and "Password must be at least 6 characters long." Wrong password (6+ chars): "Invalid username or password." No hint which part was wrong.
 - [ ] **3.3 Login success.** Correct credentials. Expect a redirect to `/list` and the nav changes to Home, View Blogs, Create Post, Categories, Logout. In DevTools, Application > Cookies > `http://localhost:5173`: cookie `token`, HttpOnly checked, SameSite Lax, Secure not checked. Application > Local Storage must hold no token or user. Network: the `login` response has no `token` in its body. Fails: [troubleshooting, "Login works but next request is 401"](operations.md#troubleshooting).
 - [ ] **3.4 Reload keeps login.** Press F5 on `/list`. Still logged in (nav still shows Logout). Network shows `GET /api/v1/user/profile` with `200`. Open a new tab at `/list`: also logged in.
@@ -188,13 +188,43 @@ Start both servers: backend (`npm run dev` in `backend-lite/`, port 3000; restar
 - [ ] **3.10 Delete a post.** Details page > Delete > the "Confirm Delete" dialog > Cancel keeps the post; Delete removes it and goes to `/list`. The post is gone.
 - [ ] **3.11 Delete a category keeps its posts.** Create a post in a throwaway category, then delete the category from `/categories` (confirm dialog). The post is still on `/list` and shows no category.
 - [ ] **3.12 404 page.** Visit `/does-not-exist`. Expect "404" and "Page not found." with a "Back home" button that goes to `/`. Visit `/posts/99999`: expect an error line (`Error: ...`; the exact text, probably the axios 404 message, is unverified). Visit `/edit-post/99999` while logged in and watch the console (behavior unverified).
-- [ ] **3.13 Logout clears it.** Click Logout. Expect a redirect to `/`, nav back to Login. Cookies: `token` gone (or expired). F5: still logged out. The server clears the cookie but does not revoke the token (known gap), so there is nothing more to check here.
+- [ ] **3.13 Logout clears it.** Click Logout. Expect a redirect to `/`, nav back to the public one (no Login link). Cookies: `token` gone (or expired). F5: still logged out. The server clears the cookie but does not revoke the token (known gap), so there is nothing more to check here.
 - [ ] **3.14 Protected routes redirect when logged out.** While logged out visit each of `/create-post`, `/edit-post/1`, `/create-category`, `/edit-category/1`. Each should land on `/login` (no flash of the form). Public routes `/`, `/list`, `/categories`, `/posts/1` stay open.
 - [ ] **3.15 Logged-out visitors see no controls.** Logged out: the post details page has no Edit or Delete buttons; `/categories` has no "Create Category" button and the cards have no Edit/Delete; the nav has no Create Post. The list and details pages still show all content.
 - [ ] **3.16 Session ends on a 401.** Log in, then in DevTools delete the `token` cookie and click "Create Post" in the nav (a full page load). Expect to be sent to `/login`. Optionally: log in, delete the cookie, then press Delete in a dialog without reloading; the 401 interceptor should log you out (behavior from the code, unverified).
 - [ ] **3.17 429 message on lockout.** Restart the backend first. On `/login` submit a wrong password (6+ characters) 11 times. Expect the message "Too many attempts. Try again later." from the 11th attempt on, and the correct password is also refused. Restart the backend and log in to confirm recovery.
-- [ ] **3.18 Mobile width and nav.** DevTools device toolbar (Ctrl+Shift+M), width about 375 px. Expect the three-line menu icon (the desktop links are hidden), tapping it opens a top drawer with View Blogs, Categories, Login (logged out) or View Blogs, Create Post, Categories, Logout (logged in); the close (X) button works; the Logout button in the drawer logs out. The code marks the mobile nav "have to optimize", so note layout oddities rather than failing on them. Check the list is readable on narrow width: the grid uses a fixed column size, so cards may look cramped (unverified). Also test at about 900 px (the `md` breakpoint where the desktop nav appears).
+- [ ] **3.18 Mobile width and nav.** DevTools device toolbar (Ctrl+Shift+M), width about 375 px. Expect the three-line menu icon (the desktop links are hidden), tapping it opens a top drawer with View Blogs, Categories (logged out; no Login item) or View Blogs, Create Post, Categories, Logout (logged in); the close (X) button works; the Logout button in the drawer logs out. The code marks the mobile nav "have to optimize", so note layout oddities rather than failing on them. Check the list is readable on narrow width: the grid uses a fixed column size, so cards may look cramped (unverified). Also test at about 900 px (the `md` breakpoint where the desktop nav appears).
 - [ ] **3.19 Console is clean.** After the above, no red errors other than expected 401/404 requests. `npm run lint` is known to report about 42 errors; they are not runtime errors.
+
+### 3.1 Logged-out read-only checks
+
+Added 2026-10-11 for the public read-only frontend. The curl checks were run by a tester against a local backend with the built frontend (port 3999); the browser items were **not** run (no browser available), so they are unverified.
+
+Browser checklist (unverified), logged out, with DevTools open:
+
+- [ ] **R.1 No Login link on desktop.** The navbar shows Home, View Blogs, Categories only.
+- [ ] **R.2 No Login item on mobile.** At about 375 px the drawer shows View Blogs and Categories only.
+- [ ] **R.3 No link to `/login` anywhere.** Click through `/`, `/list`, `/categories`, a post: no link leads to `/login`. (Verified by code search: no other component links to it.)
+- [ ] **R.4 `/login` still works when typed.** Open `/login` directly: the form appears; logging in works and the nav switches to the private one.
+- [ ] **R.5 Protected pages redirect.** `/create-post` and the other admin routes still land on `/login` (see 3.14).
+- [ ] **R.6 Categories page is read-only.** No Create Category button and no Edit/Delete on cards (see 3.15); logged in, they appear (`isAdmin` is now `Boolean(user)`).
+- [ ] **R.7 robots.txt.** `/robots.txt` shows `User-agent: *` and `Disallow: /login` as plain text, not the app (check on the droplet too).
+
+Curl checks (verified locally; each unauthenticated request returns `401`; `$PORT` is your server port):
+
+```sh
+for t in "POST api/v1/posts/create" "PUT api/v1/posts/1" "DELETE api/v1/posts/1" \
+         "POST api/v1/category/create" "PUT api/v1/category/1" "DELETE api/v1/category/1" \
+         "POST api/v1/uploads" "GET api/v1/user/profile"; do
+  set -- $t
+  printf '%s %s ' "$1" "$2"
+  curl -s -o /dev/null -w '%{http_code}\n' -X "$1" -H 'Content-Type: application/json' -d '{}' "http://localhost:$PORT/$2"
+done
+curl -s -o /dev/null -w '%{http_code}\n' http://localhost:$PORT/login          # 200, the SPA index.html
+curl -s -i http://localhost:$PORT/robots.txt                                    # 200, text/plain
+```
+
+Expect `401` on every API line. `/login` and `/robots.txt` are served only when `public/` is built (the container, or a local `npm run build` copied into `backend-lite/public`); with the Vite dev server `/robots.txt` comes from `frontend/public`.
 
 ## 4. Editor tests in the browser
 

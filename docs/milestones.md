@@ -137,6 +137,14 @@ One section per phase of `/PLAN.md`. A phase is "done" only when its "Done when"
   - Backup and restore of `uploads/` (documented, commands unverified).
 - Known gaps: no cleanup of orphaned images (not planned for v1); images are public by URL and keep EXIF data; `docker compose down -v` deletes uploads along with the database; `backup.js` does not include uploads, so the off-droplet copy must cover `uploads/` separately; no automated tests. Frontend: lint reports 42 errors (prop-types, unused React imports); selecting through a trailing newline does not include the following line in line-prefix actions (heading, lists, quote); the toolbar is hidden in Preview on narrow screens; images are not deleted when a post is deleted.
 
+## Public read-only frontend (2026-10-11)
+
+- Status: built; build and curl checks verified by a tester; browser click-through not done.
+- Built: Login button (desktop) and Login drawer item (mobile) removed from `PublicNav.jsx`; nothing else links to `/login`. The `/login` route and the `adminOnly` redirect are unchanged, so `/login` is public but unlinked. `GetAllCategories.jsx` uses `isAdmin = Boolean(user)` (same result today). New `frontend/public/robots.txt` (`Disallow: /login`).
+- Changed from plan: not in PLAN.md.
+- Verification: `npm run build` passes; `robots.txt` lands in `dist/` and is served as `text/plain`; `GET /login` returns the SPA `index.html`; unauthenticated post create/update/delete, category create/update/delete, upload and `GET /user/profile` all return 401 (commands in [testing.md](testing.md#31-logged-out-read-only-checks)).
+- Known gaps: no browser check; `robots.txt` on the droplet not checked; robots.txt does not strictly prevent indexing (a `noindex` meta on Login is not done). Later, owner's choice: Caddy IP allowlist or basicauth on the login endpoint; a separate admin build.
+
 ## Known gaps / next steps
 
 1. Phase 4 follow-ups: measure image vulnerabilities (needs a scanner or a `docker scout` login), and run the Caddy network, `stop`/`restart` and backup pruning checks.
