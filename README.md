@@ -1,4 +1,4 @@
-# BlogMe Lite
+# BlogMe
 
 A minimal single-author blog: an Express API on SQLite, a React (MUI) frontend, designed to run as one Docker container behind Caddy. Only the owner can log in, write, edit and delete posts and categories, and upload images (PNG, JPEG, GIF, WebP, max 5 MB; backend verified with `curl`; editor UI built but not clicked through in a browser); visitors read.
 

@@ -2,7 +2,7 @@
 
 Status (2026-10-05): backend verified against `backend/src` (Phase 1, Phase 7 uploads). Frontend read from `frontend/src` (Phases 3 and 7; build verified, browser click-through not done). Container verified by running a patched copy of the Dockerfile (see [milestones.md](milestones.md#phase-4-containerize)); the committed Dockerfile now builds (lead-confirmed; the full checks used an equivalent patched copy). Caddy and the droplet (Phase 5) are not started. Public read-only frontend change (2026-10-11): build and curl checks verified, no browser click-through. Security hardening pass (2026-10-11, uncommitted when documented): read from the diff; 17 backend tests seen passing after fix pass 2; see [security.md](security.md).
 
-BlogMe Lite is a single-author blog: one Docker container (Express serving the API and the built React app) with one SQLite file on a volume, behind Caddy at `blog.<domain>`.
+BlogMe is a single-author blog: one Docker container (Express serving the API and the built React app) with one SQLite file on a volume, behind Caddy at `blog.<domain>`.
 
 ## Components and request flow
 

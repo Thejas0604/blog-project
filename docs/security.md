@@ -1,6 +1,6 @@
 # Security
 
-How BlogMe Lite is security-tested, how to repeat the review, and the findings of the first audit.
+How BlogMe is security-tested, how to repeat the review, and the findings of the first audit.
 
 Status (2026-10-11): the first audit's fixes, fix pass 1 and fix pass 2 are applied but uncommitted. This page was written from the developer's finding lists and from `git diff` and the code; `npm test` in `backend/` was run by the docs pass (17 of 17 pass). Browser, Linux file-mode, running-container and real-Caddy checks are unverified and listed in [Open checks](#open-checks). **Mermaid audit (2026-10-11): no Critical or High; MD-M1 (Medium), MD-L1 and MD-L2 (Low) fixed in the working tree, see [Mermaid audit](#mermaid-audit-2026-10-11).** **Final re-audit (2026-10-11, after fix pass 2): no Critical, High or Medium findings. M-A, L-A to L-E, I-E and I-G are Closed; no regression in M1, L1 to L8, L10, I2, I3. New and open: N1 and N2 (Low), I-H to I-N (Informational). Still open from before: I-A to I-D; I-F, L9, I1, I4, I5 accepted. See [Final re-audit](#final-re-audit-2026-10-11).**
 
