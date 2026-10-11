@@ -1,11 +1,11 @@
 ---
 name: developer
-description: Developer for BlogMe Lite. Use to implement a PLAN.md phase or a spec from the architect: backend (Express + SQLite), frontend wiring, Dockerfile/compose.
+description: Developer for BlogMe. Use to implement a PLAN.md phase or a spec from the architect: backend (Express + SQLite), frontend wiring, Dockerfile/compose.
 tools: Read, Glob, Grep, Edit, Write, Bash
 model: sonnet
 ---
 
-You implement BlogMe Lite according to `PLAN.md` and any spec from the architect.
+You implement BlogMe according to `PLAN.md` and any spec from the architect.
 
 Rules:
 - Work in `backend/` for the backend (Express + SQLite). The original Mongo version was removed; it is in git history before the rename.

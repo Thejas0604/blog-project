@@ -35,7 +35,7 @@ curl -s https://blog.<domain>/health         # expected: {"status":"ok"}
 
 `/health` only shows the process is up; it does not query the database. The image also has a Docker `HEALTHCHECK` (fetches `http://127.0.0.1:<PORT>/health` every 30 s, 5 s timeout, 15 s start period, 3 retries); `docker compose ps` shows `(healthy)` or `(unhealthy)` (the developer reported the container reaching healthy; not re-run by the docs pass). Locally (verified): `curl -s http://localhost:3000/health` returns `{"status":"ok"}`.
 
-Log content (seen in a container): startup prints `BlogMe Lite listening on port <PORT>`; unexpected 500 errors print the stack. Failed logins and 4xx errors are not logged. Scripts also print a dotenv line such as `injected env (0) from .env`; it is harmless.
+Log content (seen in a container): startup prints `BlogMe listening on port <PORT>`; unexpected 500 errors print the stack. Failed logins and 4xx errors are not logged. Scripts also print a dotenv line such as `injected env (0) from .env`; it is harmless.
 
 ## Admin
 

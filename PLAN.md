@@ -1,4 +1,4 @@
-# BlogMe Lite: Implementation Plan
+# BlogMe: Implementation Plan
 
 Goal: a minimal, single-author blog that runs as **one Docker container** with a **SQLite file** on a small DigitalOcean droplet (1 vCPU, 2 GB RAM), behind Caddy at `blog.<domain>`. It is the place to publish write-ups of the author's other projects.
 

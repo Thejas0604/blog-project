@@ -1,8 +1,8 @@
 {
-  "name": "blogme-lite-backend",
+  "name": "blogme-backend",
   "version": "1.0.0",
   "private": true,
-  "description": "BlogMe Lite: single-author blog backend on SQLite",
+  "description": "BlogMe: single-author blog backend on SQLite",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

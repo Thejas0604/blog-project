@@ -1,4 +1,4 @@
-# BlogMe Lite documentation
+# BlogMe documentation
 
 Status (2026-10-11): Mermaid diagram rendering was added to the frontend (uncommitted when documented; see [milestones.md](milestones.md#mermaid-diagrams-2026-10-11)); its audit findings (MD-M1, MD-L1, MD-L2) are fixed, see [security.md](security.md#mermaid-audit-2026-10-11). a security hardening pass and a second fix pass for the re-audit findings were applied (uncommitted when documented); 17 backend tests pass; a final re-audit is recommended; see [security.md](security.md). Earlier status (2026-10-05): backend (Phase 1) verified by `curl`. Frontend (Phase 3) read from code; build verified, not clicked through in a browser. Container (Phase 4): the committed Dockerfile now builds (lead-confirmed); the full container checks were run earlier on an equivalent patched copy and are not re-run on the committed file. Phase 7 (Markdown editor and image uploads): backend done and curl-verified; frontend built and build-verified, editor not clicked through in a browser. Droplet (Phase 5) not started, so deploy steps there are unverified.
 

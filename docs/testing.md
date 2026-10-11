@@ -44,7 +44,7 @@ Conventions: `$BASE` is `http://localhost:3000/api/v1` and `$ORIGIN` is `http://
   ```
   Expect `Admin "admin" created.` (a harmless dotenv "injected env" line may print first). Password must be 12+ characters. Run it again: expect `An admin already exists; nothing to do.` Run it with a short password on a fresh database: expect exit code 1. The password is read from `ADMIN_PASSWORD` (or a hidden prompt if unset); it is no longer accepted as an argument. The inline variable still lands in shell history, so use a throwaway one here. Fails with "cannot log in later": [troubleshooting, "Admin created but cannot log in"](operations.md#troubleshooting).
 - [ ] **0.5a Seed sample data (optional, before the browser checks).** In `backend/`: `node src/scripts/seed.js`. Expect `Seed done: 5 categories and 14 posts added.`; a second run prints `0 categories and 0 posts added.` Without an admin it exits 1 (`No admin found. Run: node src/scripts/createAdmin.js`). Test data only; never on the droplet. Checks that expect an empty blog (for example an empty posts list) will see these posts, so use a fresh database for those. Script output verified 2026-10-11; viewing the posts in a browser was not verified.
-- [ ] **0.6 Start the backend.** In `backend/`: `npm run dev`. Expect `BlogMe Lite listening on port 3000`. Fails with `JWT_SECRET is not set`: [troubleshooting](operations.md#troubleshooting) first row.
+- [ ] **0.6 Start the backend.** In `backend/`: `npm run dev`. Expect `BlogMe listening on port 3000`. Fails with `JWT_SECRET is not set`: [troubleshooting](operations.md#troubleshooting) first row.
 - [ ] **0.7 Windows note.** Use Git Bash for the `curl` steps if you can (commands below are bash). PowerShell variants are given where they differ. In PowerShell always type `curl.exe`; plain `curl` is an alias for `Invoke-WebRequest` and behaves differently.
 
 ## 1. Backend smoke tests with curl
@@ -299,7 +299,7 @@ Never run `docker compose down -v` in this section unless you mean to wipe the d
 
 - [ ] **5.1 Root env file.** `cp .env.example .env` and set `JWT_SECRET` to 32+ characters (`openssl rand -hex 32`, or any 32+ character string). Use the **root** `.env.example`, not `backend/.env.example` (its `DB_PATH` would override the container's; `NODE_ENV` in `.env` is ignored because the compose files set it). `git status` must not list `.env` (it is ignored).
 - [ ] **5.2 Build and run.** `dc up -d --build`, then `dc ps`. Expect the `blog` service `Up`. The first build can take minutes. Fails with `node-gyp`/`find Python`: [troubleshooting](operations.md#troubleshooting) (the `--ignore-scripts` flag must be in the Dockerfile). Fails with network `caddy` not found: you left out the dev override.
-- [ ] **5.3 Health.** `curl -s http://localhost:3000/health` expect `{"status":"ok"}`. Logs: `dc logs --tail=50 blog` shows `BlogMe Lite listening on port 3000`.
+- [ ] **5.3 Health.** `curl -s http://localhost:3000/health` expect `{"status":"ok"}`. Logs: `dc logs --tail=50 blog` shows `BlogMe listening on port 3000`.
 - [ ] **5.4 Non-root and permissions.**
   ```sh
   dc exec blog id                       # expect uid=1000(node) gid=1000(node)
