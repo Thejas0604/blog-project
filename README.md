@@ -2,12 +2,12 @@
 
 A minimal single-author blog: an Express API on SQLite, a React (MUI) frontend, designed to run as one Docker container behind Caddy. Only the owner can log in, write, edit and delete posts and categories, and upload images (PNG, JPEG, GIF, WebP, max 5 MB; backend verified with `curl`; editor UI built but not clicked through in a browser); visitors read.
 
-The original MongoDB version is kept in `backend/` and is not part of the lite build. The build plan is in [PLAN.md](PLAN.md).
+The build plan is in [PLAN.md](PLAN.md). The original MongoDB backend was removed and is only in git history.
 
 ## Quick start (backend, local)
 
 ```sh
-cd backend-lite
+cd backend
 cp .env.example .env          # set JWT_SECRET (required)
 npm install
 node src/scripts/createAdmin.js
@@ -23,14 +23,14 @@ npm install
 npm run dev          # http://localhost:5173, proxies /api and /uploads to localhost:3000
 ```
 
-Run the scripts from any directory: a relative `DB_PATH` and `.env` resolve against `backend-lite/`.
+Run the scripts from any directory: a relative `DB_PATH` and `.env` resolve against `backend/`.
 
 Back up the whole `blog-data` volume (database backups and `uploads/`); see [docs/operations.md](docs/operations.md#backup-and-verify).
 
 ## Docker
 
 ```sh
-cp .env.example .env     # set JWT_SECRET; use the root file, not backend-lite/.env.example
+cp .env.example .env     # set JWT_SECRET; use the root file, not backend/.env.example
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build   # local test, port 3000
 ```
 

@@ -6,7 +6,7 @@ Keep it lite. If a feature is not listed under "In scope", do not build it.
 
 ## Instructions for the implementing agent
 
-- Work in a **new `backend-lite/` directory**. Do not modify or delete `backend/` (the original Mongo version) until the owner says so.
+- The backend lives in `backend/` (Express + SQLite). The original Mongo backend was removed and can be recovered from git history (before the rename of `backend-lite/` to `backend/`).
 - The **API contract at the bottom of this file is authoritative.** It was derived from the existing frontend and the old backend. The frontend reads Mongo-style names (`_id`, `categoryName`, `postFound`, ...), so the backend serializes to those names. Do not rename fields on the frontend.
 - Before each phase, read the files that phase names. Do not assume.
 - Finish each phase's "Done when" checks before starting the next. Commit after each phase with a clear message.
@@ -32,7 +32,7 @@ Likes, comments and slugs can come later as small additions once the blog is liv
 
 ```
 blog-project/
-  backend-lite/
+  backend/
     src/
       index.js            # express app, serves API + built frontend
       db.js               # better-sqlite3 connection + schema bootstrap
@@ -89,10 +89,10 @@ Already established:
 
 Done when: the API contract table is confirmed and the Phase 3 screen list is written down.
 
-## Phase 1: SQLite backend (`backend-lite/`)
+## Phase 1: SQLite backend (`backend/`)
 
 Do:
-1. Scaffold `backend-lite/` with `package.json` (`"start": "node src/index.js"`, `"dev": "node --watch src/index.js"`) and the dependencies above.
+1. Scaffold `backend/` with `package.json` (`"start": "node src/index.js"`, `"dev": "node --watch src/index.js"`) and the dependencies above.
 2. Write `db.js` (connection, pragmas, schema bootstrap, directory creation, SIGTERM close). Database path from `process.env.DB_PATH`, default `./data/blog.db`.
 3. Write routes and a `serialize.js` that match the **API contract** exactly (paths, response keys, `_id` as a string).
    - Ids in URLs must be integers. A non-numeric or unknown id returns 404, never 500.
@@ -161,11 +161,11 @@ Done when: with backend and frontend both running locally, the owner can log in,
 Do:
 1. Multi-stage `Dockerfile` on **`node:22-slim`** for all stages (avoids Alpine build problems with `better-sqlite3`).
    - Stage 1: `npm ci` and `npm run build` in `frontend/`.
-   - Stage 2: install `backend-lite` production dependencies, copy the built frontend into `backend-lite/public`, `chown` `/app/data` to the `node` user, and run as `USER node`.
+   - Stage 2: install `backend` production dependencies, copy the built frontend into `backend/public`, `chown` `/app/data` to the `node` user, and run as `USER node`.
    - A Vite build on 2 GB RAM beside Caddy is tight. Either add swap on the droplet or build the image elsewhere (CI or the dev machine) and push it.
 2. In `index.js`, serve `public/` statically and fall back to `index.html` for non-`/api` routes (React Router support).
 3. `docker-compose.yml`: one `blog` service, `init: true`, volume `blog-data:/app/data`, env from `.env`, `restart: unless-stopped`, no published ports, memory limit around 300 MB. Attach it to the **external Caddy network** by name and give it the alias `blog`.
-4. `.dockerignore` excluding `node_modules`, `.env`, `.git` and `backend/` (the original).
+4. `.dockerignore` excluding `node_modules`, `.env` and `.git`.
 
 Done when: `docker compose up --build` serves the whole app on one port, the container can write the database as the `node` user, and the data survives `docker compose down` followed by `up`.
 
@@ -241,11 +241,11 @@ Notes:
 
 Design by the architect; no new frontend dependency and no `multer`.
 
-**Backend** (`backend-lite/`):
+**Backend** (`backend/`):
 1. `src/uploadDir.js` (shared helper): `UPLOAD_DIR` is `UPLOAD_DIR` env or `<DB dir>/uploads`, created at startup (a temp dir when `DB_PATH` is `:memory:`).
 2. `src/routes/uploads.js`: `POST /api/v1/uploads`, `requireAuth` first, then `express.raw({ type: [png, jpeg, gif, webp], limit: '5mb' })` on this route only. Sniff magic bytes (PNG, JPEG, GIF87a/89a, RIFF....WEBP); extension from the detected type; reject SVG and mismatches with 415. Name is `crypto.randomUUID()` plus extension, written with flag `wx`. Respond 201 with `{ status, message, url, name }`. Map `entity.too.large` to 413 `Image too large (max 5 MB)`.
 3. `app.js`: mount the router before the `/api` 404. Serve `/uploads` with `express.static(UPLOAD_DIR, { index: false, dotfiles: 'deny', redirect: false, fallthrough: false, maxAge: '365d', immutable: true })` plus `X-Content-Type-Options: nosniff` and `Content-Security-Policy: default-src 'none'; img-src 'self'; sandbox`. Mount it **before** the SPA fallback so a missing file is a JSON 404, not `index.html`.
-4. `.gitignore` covers `backend-lite/data` (check `uploads`). `.env.example`: optional `UPLOAD_DIR`. Optional `request_body { max_size 6MB }` in `Caddyfile.snippet`.
+4. `.gitignore` covers `backend/data` (check `uploads`). `.env.example`: optional `UPLOAD_DIR`. Optional `request_body { max_size 6MB }` in `Caddyfile.snippet`.
 5. `backup.js` stays DB-only. Docs: the backup unit is the whole `blog-data` volume: `backups/` plus `uploads/`, copy both off the droplet (rsync suits immutable files).
 
 **Frontend** (`frontend/`):

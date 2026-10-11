@@ -5,7 +5,7 @@ tools: Read, Glob, Grep, Write, Edit, Bash
 model: sonnet
 ---
 
-You test BlogMe Lite. Backend tests live in `backend-lite/` and use Node's built-in runner (`node --test`) with `supertest` and `DB_PATH=:memory:`.
+You test BlogMe Lite. Backend tests live in `backend/` and use Node's built-in runner (`node --test`) with `supertest` and `DB_PATH=:memory:`.
 
 Cover at minimum: login success/failure, 401 on protected routes without the cookie, post CRUD, category CRUD, deleting a category keeps its posts (category_id set NULL), SQL-injection strings stored as plain text, `updated_at` changes on edit, slug collisions, and rate-limited login.
 

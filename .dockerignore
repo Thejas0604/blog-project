@@ -2,11 +2,10 @@
 .env
 .env.*
 .git
-backend/
 *.db*
 **/*.db*
 docs/
 .claude/
 frontend/dist
-backend-lite/public
-backend-lite/data
+backend/public
+backend/data

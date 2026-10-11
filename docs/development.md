@@ -4,13 +4,13 @@ Status (2026-10-05): backend commands run locally (Phase 1). Frontend scripts re
 
 ## Prerequisites
 
-- Node 22 or newer (`engines.node` is `>=22` in `backend-lite/package.json`, matching `better-sqlite3@13.0.3`; the Docker image uses `node:22-slim`). Ran locally on Node 26.
+- Node 22 or newer (`engines.node` is `>=22` in `backend/package.json`, matching `better-sqlite3@13.0.3`; the Docker image uses `node:22-slim`). Ran locally on Node 26.
 - No MongoDB needed.
 
-## Backend (`backend-lite/`)
+## Backend (`backend/`)
 
 ```sh
-cd backend-lite
+cd backend
 cp .env.example .env     # set JWT_SECRET (required)
 npm install
 npm run dev              # node --watch src/index.js
@@ -25,7 +25,7 @@ Create the admin (CLI args, or no args for an interactive prompt; password at le
 node src/scripts/createAdmin.js
 ```
 
-Try an upload (after logging in with a cookie jar, see [api/overview.md](api/overview.md#post-uploads)). Images go to `backend-lite/data/uploads/`, which is git-ignored (`data` is in `backend-lite/.gitignore`; confirmed with `git check-ignore`).
+Try an upload (after logging in with a cookie jar, see [api/overview.md](api/overview.md#post-uploads)). Images go to `backend/data/uploads/`, which is git-ignored (`data` is in `backend/.gitignore`; confirmed with `git check-ignore`).
 
 Run a backup (database only; writes to `<DB dir>/backups`, keeps 14):
 
@@ -33,22 +33,22 @@ Run a backup (database only; writes to `<DB dir>/backups`, keeps 14):
 node src/scripts/backup.js
 ```
 
-The scripts load `.env` and open the database at `DB_PATH`; they do not need `JWT_SECRET`. A relative `DB_PATH` (and the `.env` file itself) is resolved against `backend-lite/`, not the current directory, so the server and the scripts open the same database wherever you run them from (seen: `DB_PATH=./data2/blog.db node backend-lite/src/scripts/createAdmin.js` run from the repo root created the file under `backend-lite/data2/`). Before this fix, an admin created from the repo root went into a different database and could not log in. They print a dotenv line such as `injected env (0) from .env`; it is harmless.
+The scripts load `.env` and open the database at `DB_PATH`; they do not need `JWT_SECRET`. A relative `DB_PATH` (and the `.env` file itself) is resolved against `backend/`, not the current directory, so the server and the scripts open the same database wherever you run them from (seen: `DB_PATH=./data2/blog.db node backend/src/scripts/createAdmin.js` run from the repo root created the file under `backend/data2/`). Before this fix, an admin created from the repo root went into a different database and could not log in. They print a dotenv line such as `injected env (0) from .env`; it is harmless.
 
 ### Environment variables
 
-From `backend-lite/.env.example`:
+From `backend/.env.example`:
 
 | Variable | Purpose | Notes |
 |---|---|---|
 | `PORT` | Listen port | Default 3000. |
 | `JWT_SECRET` | Signs JWTs | Required in every environment (empty in the example file, so you must fill it). At least 32 characters when `NODE_ENV=production`. Generate with `openssl rand -hex 32`. Never commit real values. |
-| `DB_PATH` | SQLite file | Default `./data/blog.db`, resolved against `backend-lite/`; the directory is created. `:memory:` is allowed by `db.js` (no persistence). |
-| `UPLOAD_DIR` | Where uploaded images are stored | Optional, commented out in the example. Default `uploads/` next to the DB file (`backend-lite/data/uploads` locally, `/app/data/uploads` in the container). A relative value resolves against `backend-lite/`. With `DB_PATH=:memory:` and no `UPLOAD_DIR`, a temp directory is used. |
+| `DB_PATH` | SQLite file | Default `./data/blog.db`, resolved against `backend/`; the directory is created. `:memory:` is allowed by `db.js` (no persistence). |
+| `UPLOAD_DIR` | Where uploaded images are stored | Optional, commented out in the example. Default `uploads/` next to the DB file (`backend/data/uploads` locally, `/app/data/uploads` in the container). A relative value resolves against `backend/`. With `DB_PATH=:memory:` and no `UPLOAD_DIR`, a temp directory is used. |
 | `CLIENT_ORIGIN` | Allowed CORS origin in dev | `cors` is loaded only when `NODE_ENV` is not `production`. Example `http://localhost:5173`. |
 | `NODE_ENV` | `production` makes the cookie `Secure`, disables CORS, enforces the 32 character secret | The example file uses `development`. |
 
-No admin credentials belong in `.env`. Local `data/` (database, backups, uploads), `*.db*` and `.env` are git-ignored in `backend-lite/.gitignore`.
+No admin credentials belong in `.env`. Local `data/` (database, backups, uploads), `*.db*` and `.env` are git-ignored in `backend/.gitignore`.
 
 ## Frontend (`frontend/`)
 
@@ -63,7 +63,7 @@ npm run lint       # eslint . (currently fails, see below)
 npm run preview
 ```
 
-Run the backend (`npm run dev` in `backend-lite/`, port 3000) in a second terminal. Vite proxies `/api` and `/uploads` to `http://localhost:3000` (`vite.config.js`), so the browser sees one origin and the cookie works without CORS. The frontend has no `.env` file by default.
+Run the backend (`npm run dev` in `backend/`, port 3000) in a second terminal. Vite proxies `/api` and `/uploads` to `http://localhost:3000` (`vite.config.js`), so the browser sees one origin and the cookie works without CORS. The frontend has no `.env` file by default.
 
 | Variable | Purpose |
 |---|---|
@@ -84,7 +84,7 @@ Notes:
 
 ## Docker (local)
 
-Compose reads the root `.env`, not `backend-lite/.env`. Copy the root example:
+Compose reads the root `.env`, not `backend/.env`. Copy the root example:
 
 ```sh
 cp .env.example .env        # then set JWT_SECRET (openssl rand -hex 32)
@@ -92,7 +92,7 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 curl http://localhost:3000/health
 ```
 
-- Do not copy `backend-lite/.env.example` to the root: it sets `NODE_ENV=development` and `DB_PATH=./data/blog.db`, which would override the image's `production` and `/app/data/blog.db`.
+- Do not copy `backend/.env.example` to the root: it sets `NODE_ENV=development` and `DB_PATH=./data/blog.db`, which would override the image's `production` and `/app/data/blog.db`.
 - `docker-compose.dev.yml` is for local testing only: it publishes `127.0.0.1:3000` and replaces the external Caddy network with the default one. It needs Compose v2.24 or newer (`!override` and `!reset`; verified on Compose v5.5.1). Without it, `docker-compose.yml` is expected to fail because the external `caddy` network does not exist locally (not run).
 - The image serves the built frontend and the API on port 3000. With `NODE_ENV=production` the cookie is `Secure`; browsers accept it on `http://localhost`, but this was not tried in a browser.
 - Create the admin: `docker compose -f docker-compose.yml -f docker-compose.dev.yml exec -it blog node src/scripts/createAdmin.js`.
@@ -102,14 +102,14 @@ curl http://localhost:3000/health
 
 Manual, step-by-step checks for the whole app (not yet run) are in [testing.md](testing.md).
 
-Phase 2 is skipped for now. `backend-lite/package.json` has no `test` script, so `npm test` does not exist. Phase 1 was verified by manual `curl` runs (see [milestones.md](milestones.md#phase-1-sqlite-backend-backend-lite)). Planned: `node --test` with `supertest` and `DB_PATH=:memory:`.
+Phase 2 is skipped for now. `backend/package.json` has no `test` script, so `npm test` does not exist. Phase 1 was verified by manual `curl` runs (see [milestones.md](milestones.md#phase-1-sqlite-backend-backend)). Planned: `node --test` with `supertest` and `DB_PATH=:memory:`.
 
-## Project layout (`backend-lite/`)
+## Project layout (`backend/`)
 
 ```
 src/index.js               starts the app on PORT
 src/app.js                 express app, middleware order, error handler, /health
-src/db.js                  better-sqlite3 connection, pragmas, schema, SIGTERM close; resolves DB_PATH and .env against backend-lite/
+src/db.js                  better-sqlite3 connection, pragmas, schema, SIGTERM close; resolves DB_PATH and .env against backend/
 src/uploadDir.js           resolves and creates the uploads directory
 src/serialize.js           DB row to API shape (_id, categoryName, ...)
 src/middleware/auth.js     requireAuth, cookie helpers, fail(status, message)
@@ -124,14 +124,13 @@ Other top-level items:
 frontend/                  React app (Vite). src/App.jsx routes, src/context/AuthContext.jsx,
                            src/utils/axiosInstance.js, src/services/*API.js (incl. uploadsAPI.js), src/components/{auth,posts,categories,navbar,home}
                            posts/ holds MarkdownEditor.jsx, markdownActions.js, PostContent.jsx
-Dockerfile                 stage 1 builds frontend, stage 2 runs backend-lite with the build in public/
+Dockerfile                 stage 1 builds frontend, stage 2 runs backend with the build in public/
 docker-compose.yml         service `blog`, volume `blog-data`, external Caddy network
 docker-compose.dev.yml     local override: publishes 127.0.0.1:3000
 .dockerignore, .env.example (root; used by compose), Caddyfile.snippet
-backend/                   original Mongo version, not modified, not built
 ```
 
-`backend-lite/src/app.js` serves `backend-lite/public/` (the built frontend) only if `public/index.html` exists; the Docker image provides it, local dev does not.
+`backend/src/app.js` serves `backend/public/` (the built frontend) only if `public/index.html` exists; the Docker image provides it, local dev does not.
 
 ## Conventions
 

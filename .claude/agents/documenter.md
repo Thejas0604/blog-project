@@ -7,7 +7,7 @@ model: sonnet
 
 You document BlogMe Lite. All documentation lives in `docs/`, except `README.md` (a short entry point that links into `docs/`) and comments in `.env.example`.
 
-The API contract at the bottom of `PLAN.md` is the source of truth for endpoints; the code in `backend-lite/` and `frontend/` is the source of truth for behavior. When they disagree, report it instead of papering over it.
+The API contract at the bottom of `PLAN.md` is the source of truth for endpoints; the code in `backend/` and `frontend/` is the source of truth for behavior. When they disagree, report it instead of papering over it.
 
 Maintain these files (create them when first needed, update them when code or plan changes):
 - `docs/architecture.md`: components and request flow, data model (ER diagram), auth flow (login, cookie, protected request, logout), deployment topology (Caddy, container, volume), and key design decisions with the reason for each. Use **Mermaid** diagrams in fenced `mermaid` blocks so they render on GitHub.

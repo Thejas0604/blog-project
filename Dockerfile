@@ -12,10 +12,10 @@ ENV NODE_ENV=production \
     DB_PATH=/app/data/blog.db \
     PORT=3000
 WORKDIR /app
-COPY backend-lite/package*.json ./
+COPY backend/package*.json ./
 # --ignore-scripts: better-sqlite3 ships prebuilt binaries; node:*-slim has no Python/compiler for node-gyp
 RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
-COPY backend-lite/src ./src
+COPY backend/src ./src
 COPY --from=frontend /frontend/dist ./public
 RUN mkdir -p /app/data && chown -R node:node /app/data
 USER node

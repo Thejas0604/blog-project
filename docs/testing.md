@@ -23,11 +23,11 @@ Conventions: `$BASE` is `http://localhost:3000/api/v1` and `$ORIGIN` is `http://
 - [ ] **0.1 Node 22 or newer.** Run `node -v`. Expect `v22.x` or higher (`engines.node` is `>=22`). Fails: install Node 22+. `better-sqlite3` will not load on older versions.
 - [ ] **0.2 Install dependencies.**
   ```sh
-  cd backend-lite && npm install
+  cd backend && npm install
   cd ../frontend && npm install
   ```
   Expect no errors. If `better-sqlite3` fails to build, check the Node version first.
-- [ ] **0.3 Use a throwaway database.** An old `backend-lite/data/blog.db` from earlier work may hold posts and an admin you do not remember (the stale-database pitfall: you test against data you did not create, or log in with a password you forgot). Use a separate path under the git-ignored `data/` folder. Create `backend-lite/.env` (copy `.env.example`) and set:
+- [ ] **0.3 Use a throwaway database.** An old `backend/data/blog.db` from earlier work may hold posts and an admin you do not remember (the stale-database pitfall: you test against data you did not create, or log in with a password you forgot). Use a separate path under the git-ignored `data/` folder. Create `backend/.env` (copy `.env.example`) and set:
   ```
   PORT=3000
   JWT_SECRET=change-me-for-local-testing
@@ -35,15 +35,15 @@ Conventions: `$BASE` is `http://localhost:3000/api/v1` and `$ORIGIN` is `http://
   CLIENT_ORIGIN=http://localhost:5173
   NODE_ENV=development
   ```
-  A relative `DB_PATH` is resolved against `backend-lite/`, so the file is `backend-lite/data/test/blog.db` and uploads go to `backend-lite/data/test/uploads/`. Do not use a name like `data-test/`: only `data` and `*.db*` are in `backend-lite/.gitignore`, so uploads in `data-test/` would show up in `git status`. To start clean at any time, stop the server and delete the folder: `rm -rf backend-lite/data/test` (PowerShell: `Remove-Item -Recurse -Force backend-lite\data\test`).
+  A relative `DB_PATH` is resolved against `backend/`, so the file is `backend/data/test/blog.db` and uploads go to `backend/data/test/uploads/`. Do not use a name like `data-test/`: only `data` and `*.db*` are in `backend/.gitignore`, so uploads in `data-test/` would show up in `git status`. To start clean at any time, stop the server and delete the folder: `rm -rf backend/data/test` (PowerShell: `Remove-Item -Recurse -Force backend\data\test`).
 - [ ] **0.4 Ports are free.** Backend 3000, Vite 5173. Check nothing else (an old container, an old server) uses 3000: `curl http://localhost:3000/health` should fail to connect before you start. Fails: stop the other process; if a Docker container from section 5 is up, `docker compose ... stop`.
-- [ ] **0.5 Create the admin from any directory.** Scripts open the same database wherever you run them (they resolve `.env` and `DB_PATH` against `backend-lite/`). Test it from the repo root and from elsewhere:
+- [ ] **0.5 Create the admin from any directory.** Scripts open the same database wherever you run them (they resolve `.env` and `DB_PATH` against `backend/`). Test it from the repo root and from elsewhere:
   ```sh
   cd /path/to/blog-project
-  node backend-lite/src/scripts/createAdmin.js admin admin@example.com 'change-me-12345'
+  node backend/src/scripts/createAdmin.js admin admin@example.com 'change-me-12345'
   ```
   Expect `Admin "admin" created.` (a harmless dotenv "injected env" line may print first). Password must be 12+ characters. Run it again: expect `An admin already exists; nothing to do.` Run it with a short password on a fresh database: expect exit code 1. Passing the password as an argument puts it in your shell history, so use a throwaway one here. Fails with "cannot log in later": [troubleshooting, "Admin created but cannot log in"](operations.md#troubleshooting).
-- [ ] **0.6 Start the backend.** In `backend-lite/`: `npm run dev`. Expect `BlogMe Lite listening on port 3000`. Fails with `JWT_SECRET is not set`: [troubleshooting](operations.md#troubleshooting) first row.
+- [ ] **0.6 Start the backend.** In `backend/`: `npm run dev`. Expect `BlogMe Lite listening on port 3000`. Fails with `JWT_SECRET is not set`: [troubleshooting](operations.md#troubleshooting) first row.
 - [ ] **0.7 Windows note.** Use Git Bash for the `curl` steps if you can (commands below are bash). PowerShell variants are given where they differ. In PowerShell always type `curl.exe`; plain `curl` is an alias for `Invoke-WebRequest` and behaves differently.
 
 ## 1. Backend smoke tests with curl
@@ -155,7 +155,7 @@ head -c 6000000 /dev/zero > big.png                   # 6 MB
 ```
 PowerShell: `[IO.File]::WriteAllBytes("$PWD\t.png",[Convert]::FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="))` and the same for the GIF string; for the rest use `Set-Content -Encoding ascii` for `fake.png` and `t.svg`, and `[IO.File]::WriteAllBytes("$PWD\big.png", (New-Object byte[] 6000000))`. The fake JPEG and WebP can be written with `[IO.File]::WriteAllBytes` and `[byte[]](0xFF,0xD8,0xFF,0xE0,0x4A)` (any bytes after the first three) and `[Text.Encoding]::ASCII.GetBytes("RIFF....WEBPVP8 ")`.
 
-- [ ] **2.1 PNG.** `curl -i -b jar.txt -X POST -H 'Content-Type: image/png' --data-binary @t.png $BASE/uploads` (PowerShell: `curl.exe -i -b jar.txt -X POST -H "Content-Type: image/png" --data-binary "@t.png" "$BASE/uploads"`). Expect `201` `{"status":"success","message":"Image uploaded","url":"/uploads/<uuid>.png","name":"<uuid>.png"}`. Note the name as `NAME`. The file exists in `backend-lite/data/test/uploads/`.
+- [ ] **2.1 PNG.** `curl -i -b jar.txt -X POST -H 'Content-Type: image/png' --data-binary @t.png $BASE/uploads` (PowerShell: `curl.exe -i -b jar.txt -X POST -H "Content-Type: image/png" --data-binary "@t.png" "$BASE/uploads"`). Expect `201` `{"status":"success","message":"Image uploaded","url":"/uploads/<uuid>.png","name":"<uuid>.png"}`. Note the name as `NAME`. The file exists in `backend/data/test/uploads/`.
 - [ ] **2.2 JPEG, GIF, WebP.** Repeat with `image/jpeg` + `t.jpg` (name ends `.jpg`), `image/gif` + `t.gif` (`.gif`), `image/webp` + `t.webp` (`.webp`). Expect `201` each. (Never verified before.) For visual confirmation use real files in section 4.
 - [ ] **2.3 Mismatch and rejects, all `415`.**
   - SVG as its own type: `-H 'Content-Type: image/svg+xml' --data-binary @t.svg` expect `415` `Upload a PNG, JPEG, GIF or WebP image as the raw request body`.
@@ -174,7 +174,7 @@ PowerShell: `[IO.File]::WriteAllBytes("$PWD\t.png",[Convert]::FromBase64String("
 
 ## 3. Frontend in the browser
 
-Start both servers: backend (`npm run dev` in `backend-lite/`, port 3000; restart it first to reset the rate limit) and frontend (`npm run dev` in `frontend/`, open `http://localhost:5173`). The app is always dark (the theme is fixed; there is no light mode toggle). Open DevTools (F12) and keep the Console and Network tabs visible. Any red console error during a step is a finding.
+Start both servers: backend (`npm run dev` in `backend/`, port 3000; restart it first to reset the rate limit) and frontend (`npm run dev` in `frontend/`, open `http://localhost:5173`). The app is always dark (the theme is fixed; there is no light mode toggle). Open DevTools (F12) and keep the Console and Network tabs visible. Any red console error during a step is a finding.
 
 - [ ] **3.1 Home loads.** `/` shows the hero and a "Read Blogs" button leading to `/list`. Logged-out nav: Home, View Blogs, Categories (no Login since 2026-10-11, no Create Post, no Logout; see 3.1 below).
 - [ ] **3.2 Login validation.** Go to `/login`. Submit empty: "Please enter a username." and "Password must be at least 6 characters long." Wrong password (6+ chars): "Invalid username or password." No hint which part was wrong.
@@ -224,7 +224,7 @@ curl -s -o /dev/null -w '%{http_code}\n' http://localhost:$PORT/login          #
 curl -s -i http://localhost:$PORT/robots.txt                                    # 200, text/plain
 ```
 
-Expect `401` on every API line. `/login` and `/robots.txt` are served only when `public/` is built (the container, or a local `npm run build` copied into `backend-lite/public`); with the Vite dev server `/robots.txt` comes from `frontend/public`.
+Expect `401` on every API line. `/login` and `/robots.txt` are served only when `public/` is built (the container, or a local `npm run build` copied into `backend/public`); with the Vite dev server `/robots.txt` comes from `frontend/public`.
 
 ## 4. Editor tests in the browser
 
@@ -296,7 +296,7 @@ PowerShell: `function dc { docker compose -f docker-compose.yml -f docker-compos
 
 Never run `docker compose down -v` in this section unless you mean to wipe the database, backups and uploads (`-v` deletes the `blog-data` volume).
 
-- [ ] **5.1 Root env file.** `cp .env.example .env` and set `JWT_SECRET` to 32+ characters (`openssl rand -hex 32`, or any 32+ character string). Use the **root** `.env.example`, not `backend-lite/.env.example` (that one would override `NODE_ENV` and `DB_PATH` in the container). `git status` must not list `.env` (it is ignored).
+- [ ] **5.1 Root env file.** `cp .env.example .env` and set `JWT_SECRET` to 32+ characters (`openssl rand -hex 32`, or any 32+ character string). Use the **root** `.env.example`, not `backend/.env.example` (that one would override `NODE_ENV` and `DB_PATH` in the container). `git status` must not list `.env` (it is ignored).
 - [ ] **5.2 Build and run.** `dc up -d --build`, then `dc ps`. Expect the `blog` service `Up`. The first build can take minutes. Fails with `node-gyp`/`find Python`: [troubleshooting](operations.md#troubleshooting) (the `--ignore-scripts` flag must be in the Dockerfile). Fails with network `caddy` not found: you left out the dev override.
 - [ ] **5.3 Health.** `curl -s http://localhost:3000/health` expect `{"status":"ok"}`. Logs: `dc logs --tail=50 blog` shows `BlogMe Lite listening on port 3000`.
 - [ ] **5.4 Non-root and permissions.**
@@ -310,7 +310,7 @@ Never run `docker compose down -v` in this section unless you mean to wipe the d
 - [ ] **5.6 Admin via exec (interactive).** `dc exec -it blog node src/scripts/createAdmin.js` and answer the prompts (password 12+ characters; it is not echoed). Expect `Admin "<name>" created.` In Git Bash on Windows `-it` may complain "the input device is not a TTY"; use PowerShell, or prefix with `winpty` (unverified).
 - [ ] **5.7 Login over curl in the container.** `curl -i -c cj.txt -H 'Content-Type: application/json' -d '{"username":"<name>","password":"<password>"}' http://localhost:3000/api/v1/user/login`. Expect `200` and the cookie **with `Secure`**: `HttpOnly; Secure; SameSite=Lax; Max-Age=604800` (because the image sets `NODE_ENV=production`). Create a category and a post with `-b cj.txt` (as in section 1; curl sends the Secure cookie to `http://localhost`, which it treats as trustworthy; if yours does not, use `https` via Caddy).
 - [ ] **5.8 Deep link refresh in a browser (needs a working cookie, see 5.9).** Open `http://localhost:3000/posts/1`, press F5. The page must reload to the post, not a blank page or JSON 404. Also `http://localhost:3000/does-not-exist` shows the React 404 page.
-- [ ] **5.9 Browser login on `http://localhost:3000`: the Secure cookie question.** The cookie flag comes from `secure: process.env.NODE_ENV === 'production'` in `backend-lite/src/middleware/auth.js`, and the image sets `NODE_ENV=production`, so the container always sends `Secure`. Browsers refuse to store a Secure cookie from a plain `http://` page unless they treat the origin as secure. Chrome and Firefox generally treat `http://localhost` as a secure context and accept it; Safari and any other host name or IP (`http://127.0.0.1:3000`, `http://192.168.x.x:3000`) do not. This was never tried in a browser (unverified). Test it: log in on `http://localhost:3000/login`, then F5. If you stay logged in, the cookie is stored. If you are bounced back (login "succeeds" then everything acts logged out, and the cookie is missing in DevTools), the browser rejected it; that is not an app bug. Ways to test properly:
+- [ ] **5.9 Browser login on `http://localhost:3000`: the Secure cookie question.** The cookie flag comes from `secure: process.env.NODE_ENV === 'production'` in `backend/src/middleware/auth.js`, and the image sets `NODE_ENV=production`, so the container always sends `Secure`. Browsers refuse to store a Secure cookie from a plain `http://` page unless they treat the origin as secure. Chrome and Firefox generally treat `http://localhost` as a secure context and accept it; Safari and any other host name or IP (`http://127.0.0.1:3000`, `http://192.168.x.x:3000`) do not. This was never tried in a browser (unverified). Test it: log in on `http://localhost:3000/login`, then F5. If you stay logged in, the cookie is stored. If you are bounced back (login "succeeds" then everything acts logged out, and the cookie is missing in DevTools), the browser rejected it; that is not an app bug. Ways to test properly:
   1. Section 3 against the local dev server (`NODE_ENV=development`, no `Secure`): that is the functional test of the UI.
   2. HTTPS through Caddy on the droplet (section 6): the real production test.
   3. Optional and unverified: for a one-off local container test only, add `NODE_ENV=development` to the root `.env` and recreate (`dc up -d --force-recreate`); the 32-character secret check and the CORS-off setting then no longer apply, and `Secure` is dropped. Remove that line afterwards and recreate again. Do not do this on the server.
@@ -321,11 +321,11 @@ Never run `docker compose down -v` in this section unless you mean to wipe the d
   dc exec blog sh -c 'ls -l /app/data/backups'
   ```
   Expect `Backup written: /app/data/backups/blog-<YYYYMMDD-HHMMSS>.db` and the file listed.
-- [ ] **5.12 Copy out and verify.** `dc cp blog:/app/data/backups/<file> ./scratch.db` then from `backend-lite/`:
+- [ ] **5.12 Copy out and verify.** `dc cp blog:/app/data/backups/<file> ./scratch.db` then from `backend/`:
   ```sh
   node -e "const D=require('better-sqlite3');const d=new D(process.argv[1],{readonly:true});console.log(d.prepare('select count(*) n from posts').get(), d.pragma('integrity_check'))" ../scratch.db
   ```
-  Expect your post count and `[ { integrity_check: 'ok' } ]`. Delete `scratch.db` afterwards (it contains the admin hash; it is git-ignored via `*.db*` only inside `backend-lite/`, so do not commit it from the root).
+  Expect your post count and `[ { integrity_check: 'ok' } ]`. Delete `scratch.db` afterwards (it contains the admin hash; it is git-ignored via `*.db*` only inside `backend/`, so do not commit it from the root).
 - [ ] **5.13 Backup pruning (never run).** Optional: run the backup script 16 times at different seconds (a loop with `sleep 1`), then `ls /app/data/backups` should show 14 files. Two backups within the same second collide on the file name, so keep the sleep.
 - [ ] **5.14 Uploads in the container persist.** Upload a PNG with the cookie from 5.7: `curl -b cj.txt -X POST -H 'Content-Type: image/png' --data-binary @t.png http://localhost:3000/api/v1/uploads`, check `curl -I http://localhost:3000/uploads/<name>` (200, `nosniff`), `dc down`, `dc up -d`, fetch again: still 200. `dc exec blog sh -c 'ls -l /app/data/uploads'` shows the file owned by `node`.
 - [ ] **5.15 Memory and disk.** `docker stats --no-stream` expect roughly 20 MiB of the 300 MiB limit idle (`mem_limit: 300m`); upload a few images and browse and check it stays well under. `dc exec blog sh -c 'du -sh /app/data /app/data/uploads /app/data/backups'`; `docker system df`.
@@ -358,10 +358,10 @@ Phase 5 has not started; nothing below was run. Do the setup first from [deploy.
 - [ ] **7.3 Nothing sensitive is tracked by git.** From the repo root:
   ```sh
   git status --short
-  git check-ignore -v .env backend-lite/.env backend-lite/data/test/blog.db backend-lite/data/test/uploads/x.png
+  git check-ignore -v .env backend/.env backend/data/test/blog.db backend/data/test/uploads/x.png
   git ls-files | grep -E '(^|/)\.env$|\.db|data/uploads'
   ```
-  `git status` must not list `.env`, a `.db` file or an `uploads` folder. `git check-ignore` should print a matching rule for all four paths (the first two come from `.gitignore` `.env`, the database and uploads from `backend-lite/.gitignore`: `data` and `*.db*`). The last command should print nothing (`.env.example` files are fine and are not matched). If `check-ignore` prints nothing for a path, that path is NOT ignored; fix before committing. Also check a stray `scratch.db` or `backups-copy` folder you made in the repo root is not staged.
+  `git status` must not list `.env`, a `.db` file or an `uploads` folder. `git check-ignore` should print a matching rule for all four paths (the first two come from `.gitignore` `.env`, the database and uploads from `backend/.gitignore`: `data` and `*.db*`). The last command should print nothing (`.env.example` files are fine and are not matched). If `check-ignore` prints nothing for a path, that path is NOT ignored; fix before committing. Also check a stray `scratch.db` or `backups-copy` folder you made in the repo root is not staged.
 - [ ] **7.4 No secret values in committed examples.** `git grep -n "JWT_SECRET=" -- ':!docs'` shows only empty values or the word `change-me`-style placeholders, never a real secret.
 - [ ] **7.5 Direct upload URL cannot run script.** Open `http://localhost:5173/uploads/<NAME>` (or `:3000`) in a browser: it shows the image only. In DevTools Network, the response has `nosniff` and the sandbox CSP. An upload that is not an image never gets stored (2.3), and SVG is rejected, so there is no uploaded file that can run script. Optional: rename a `.txt` to `.png` and upload it, expect 415.
 - [ ] **7.6 Uploads need auth.** Repeat 2.5. Also confirm there is no register route: `curl -i -X POST -H 'Content-Type: application/json' -d '{"username":"x","password":"y"}' $BASE/user/register` expect `404`.
@@ -429,7 +429,7 @@ Send, for the failing step number:
 
 ### Automated tests (Phase 2) are skipped for now
 
-There is no `npm test` script in `backend-lite/package.json`. The plan (PLAN.md Phase 2) is `node --test` with `supertest` and `DB_PATH=:memory:`, and `.claude/agents/tester.md` defines the tester agent that would write them. Cases it is meant to cover, so you can ask for them later:
+There is no `npm test` script in `backend/package.json`. The plan (PLAN.md Phase 2) is `node --test` with `supertest` and `DB_PATH=:memory:`, and `.claude/agents/tester.md` defines the tester agent that would write them. Cases it is meant to cover, so you can ask for them later:
 
 - Login success and failure (generic 401), and the cookie flags.
 - 401 on protected routes without the cookie.

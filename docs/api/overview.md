@@ -1,6 +1,6 @@
 # API overview
 
-Verified against `backend-lite/src` and by running every endpoint with `curl` against a throwaway database (2026-10-05). The Mongo-era API (`/categories`, `/user/register`, FormData uploads, email login) is gone; none of it exists in the lite build. The only upload is the raw-body admin image upload described under [Uploads](#uploads).
+Verified against `backend/src` and by running every endpoint with `curl` against a throwaway database (2026-10-05). The Mongo-era API (`/categories`, `/user/register`, FormData uploads, email login) is gone; none of it exists in the lite build. The only upload is the raw-body admin image upload described under [Uploads](#uploads).
 
 Base: `/api/v1`. IDs are `_id` strings of integers. Success responses have `status: "success"`; errors are `{ "status": "fail", "message": "..." }`.
 
@@ -47,7 +47,7 @@ Paths are literal: `/category` is singular; creates are `/posts/create` and `/ca
 | Server error | 500 `Internal server error` (details only in the server log). |
 | Login rate limit | See [POST /user/login](#post-userlogin). |
 
-Status codes in use: 200, 201, 400, 401, 404, 413, 415, 429, 500. The PLAN.md contract lists only 400, 401, 404 and 201; 413, 415 and 429 are additions (see [milestones.md](../milestones.md#phase-1-sqlite-backend-backend-lite)).
+Status codes in use: 200, 201, 400, 401, 404, 413, 415, 429, 500. The PLAN.md contract lists only 400, 401, 404 and 201; 413, 415 and 429 are additions (see [milestones.md](../milestones.md#phase-1-sqlite-backend-backend)).
 
 No response includes `password_hash` or the JWT.
 

@@ -6,7 +6,7 @@ Verification status (2026-10-05): the Node scripts and server behavior were run 
 
 Uploads (Phase 7, backend): verified locally with `curl`; in a container the developer saw a PNG upload, fetch and persistence across `down` then `up -d`. Linux and Caddy: unverified.
 
-Compose reads `.env` in the project root (copy the root `.env.example`, not `backend-lite/.env.example`). On the droplet the commands are plain `docker compose ...`. For a local test add `-f docker-compose.yml -f docker-compose.dev.yml` (see [development.md](development.md#docker-local)).
+Compose reads `.env` in the project root (copy the root `.env.example`, not `backend/.env.example`). On the droplet the commands are plain `docker compose ...`. For a local test add `-f docker-compose.yml -f docker-compose.dev.yml` (see [development.md](development.md#docker-local)).
 
 ## Start, stop, restart, update
 
@@ -37,7 +37,7 @@ Log content (seen in a container): startup prints `BlogMe Lite listening on port
 
 ## Admin
 
-Scripts and the server open the same database from any directory: a relative `DB_PATH` (and the `.env` file) is resolved against `backend-lite/`, not the current directory (seen: with `DB_PATH=./data2/blog.db`, running `createAdmin.js` from the repo root created `backend-lite/data2/`, not `./data2/`). In the container `DB_PATH` is absolute, so this only matters for local runs. Earlier builds resolved it against the current directory, which produced the symptom "admin created but cannot log in" (see [troubleshooting](#troubleshooting)).
+Scripts and the server open the same database from any directory: a relative `DB_PATH` (and the `.env` file) is resolved against `backend/`, not the current directory (seen: with `DB_PATH=./data2/blog.db`, running `createAdmin.js` from the repo root created `backend/data2/`, not `./data2/`). In the container `DB_PATH` is absolute, so this only matters for local runs. Earlier builds resolved it against the current directory, which produced the symptom "admin created but cannot log in" (see [troubleshooting](#troubleshooting)).
 
 Create (verified locally; interactive, password at least 12 characters, never stored in `.env`):
 
@@ -51,7 +51,7 @@ The script also takes `node src/scripts/createAdmin.js <username> <email> <passw
 
 There is no reset script (password reset is out of scope). The manual procedure below was run locally: the old password returned 401 and the new one 200 afterwards. It updates the hash in place; the server can keep running.
 
-Local (from `backend-lite/`, with `DB_PATH` set as for the server):
+Local (from `backend/`, with `DB_PATH` set as for the server):
 
 ```sh
 read -rs NEWPW; export NEWPW        # type the new password, 12+ characters
@@ -116,7 +116,7 @@ Verify a backup: list the folder, then open the newest file read-only and run an
 
 ```sh
 ls -l <DB dir>/backups
-cd backend-lite
+cd backend
 node -e "const D=require('better-sqlite3');const d=new D(process.argv[1],{readonly:true});console.log(d.prepare('select count(*) n from posts').get(), d.pragma('integrity_check'))" <path-to-backup>
 ```
 
@@ -163,7 +163,7 @@ The compose file sets `mem_limit: 300m`. In a test container `docker stats --no-
 | Upload returns 413 `Image too large (max 5 MB)` | File over 5 MB (or Caddy `request_body max_size 6MB`, if configured, rejecting it first; the Caddy line was not run) | Resize or compress the image. |
 | Upload returns 415 | Not PNG, JPEG, GIF or WebP (SVG is always rejected), the `Content-Type` does not match the file's real bytes, or an empty body | Send the right `Content-Type` and a real image; with `curl` use `--data-binary @file`. See [api/overview.md](api/overview.md#post-uploads). |
 | `/uploads/<name>` returns JSON 404 | File not in the uploads directory (typo, volume replaced, restored without `uploads/`) | `docker compose exec blog ls /app/data/uploads`; restore the files. |
-| Admin created but cannot log in (401 `Invalid credentials`) | The script wrote to a different database than the server uses. Older builds resolved a relative `DB_PATH` against the current directory, so running from the repo root created `./data/blog.db` there | Fixed in the code: a relative `DB_PATH` and `.env` now resolve against `backend-lite/`, so any directory gives the same DB. If you still have a stray `data/` folder in the repo root from before, delete it (after checking it holds nothing you need), then run `createAdmin.js` again. Check which file is in use with `ls backend-lite/data`. |
+| Admin created but cannot log in (401 `Invalid credentials`) | The script wrote to a different database than the server uses. Older builds resolved a relative `DB_PATH` against the current directory, so running from the repo root created `./data/blog.db` there | Fixed in the code: a relative `DB_PATH` and `.env` now resolve against `backend/`, so any directory gives the same DB. If you still have a stray `data/` folder in the repo root from before, delete it (after checking it holds nothing you need), then run `createAdmin.js` again. Check which file is in use with `ls backend/data`. |
 | Images disappeared after a rebuild | `docker compose down -v` (or `docker volume rm`) deleted `blog-data`, which holds `uploads/` | Restore `uploads/` from the off-droplet copy. Never use `-v`. |
 | 404 JSON on `/api/...` | Wrong path (`/category` is singular; creates are `/posts/create`) | Check [api/overview.md](api/overview.md). |
 | Build killed (OOM) | 2 GB droplet | Add swap or build elsewhere. |

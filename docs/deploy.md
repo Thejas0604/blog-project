@@ -23,7 +23,7 @@ JWT_SECRET=<output of: openssl rand -hex 32>
 # CADDY_NETWORK=<name of Caddy's Docker network>   # only if it is not "caddy"
 ```
 
-Do not copy `backend-lite/.env.example`: its `NODE_ENV=development` and `DB_PATH=./data/blog.db` would override the image's `NODE_ENV=production` and `DB_PATH=/app/data/blog.db` (set in the Dockerfile) and would disable the 32 character secret check. `JWT_SECRET` must be at least 32 characters in production or the container exits. Keep `.env` out of git (it is in `.gitignore`; `.dockerignore` also keeps it out of the image).
+Do not copy `backend/.env.example`: its `NODE_ENV=development` and `DB_PATH=./data/blog.db` would override the image's `NODE_ENV=production` and `DB_PATH=/app/data/blog.db` (set in the Dockerfile) and would disable the 32 character secret check. `JWT_SECRET` must be at least 32 characters in production or the container exits. Keep `.env` out of git (it is in `.gitignore`; `.dockerignore` also keeps it out of the image).
 
 Swap, if building on the droplet (unverified commands):
 
@@ -80,7 +80,7 @@ The script (verified locally) writes `blog-YYYYMMDD-HHMMSS.db` into `<DB dir>/ba
 Do this at least once, on a scratch copy, not the live volume. Steps 1 and 2 were run on 2026-10-05 against a laptop container (`docker compose cp` out, then the integrity check: post count 1, `ok`). The throwaway server in step 3 and a restore into the live volume were not run.
 
 1. Take a backup, then copy the newest file out of the container (for example `docker compose cp blog:/app/data/backups/<file> ./scratch.db`).
-2. Check it: `node -e "const D=require('better-sqlite3');const d=new D('scratch.db',{readonly:true});console.log(d.prepare('select count(*) n from posts').get(), d.pragma('integrity_check'))"` from `backend-lite/`; expect your post count and `integrity_check: ok`.
+2. Check it: `node -e "const D=require('better-sqlite3');const d=new D('scratch.db',{readonly:true});console.log(d.prepare('select count(*) n from posts').get(), d.pragma('integrity_check'))"` from `backend/`; expect your post count and `integrity_check: ok`.
 3. Optionally start a throwaway server: `DB_PATH=./scratch.db JWT_SECRET=change-me PORT=3999 node src/index.js`, then `curl http://localhost:3999/api/v1/posts` and confirm posts and categories are present.
 
 4. Uploads (unverified): copy `uploads/` out the same way (`docker compose cp blog:/app/data/uploads ./uploads-scratch`), pick a filename from it, and confirm it is a valid image (`file <name>`, or open it). For a full rehearsal, restore `uploads/` into a scratch volume with `node:node` ownership (see the restore steps in operations) and `curl -I http://localhost:3999/uploads/<name>` against the throwaway server with `UPLOAD_DIR` pointing at it (expect 200, `nosniff`).
